@@ -202,9 +202,9 @@ end}
 local add_help = {"add_help", function(self, value)
    typecheck("add_help", {"boolean", "string", "table"}, value)
 
-   if self._has_help then
-      table.remove(self._options)
-      self._has_help = false
+   if self._help_option_idx then
+      table.remove(self._options, self._help_option_idx)
+      self._help_option_idx = nil
    end
 
    if value then
@@ -223,7 +223,7 @@ local add_help = {"add_help", function(self, value)
          help "-h" "--help"
       end
 
-      self._has_help = true
+      self._help_option_idx = #self._options
    end
 end}
 
@@ -600,13 +600,7 @@ end
 
 function Parser:option(...)
    local option = Option(...)
-
-   if self._has_help then
-      table.insert(self._options, #self._options, option)
-   else
-      table.insert(self._options, option)
-   end
-
+   table.insert(self._options, option)
    return option
 end
 
