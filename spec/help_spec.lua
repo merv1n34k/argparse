@@ -77,13 +77,13 @@ Options:
       parser:option "--config"
 
       assert.equal([[
-Usage: foo [-q] --from <from> [--config <config>] [-h]
+Usage: foo [-h] [-q] --from <from> [--config <config>]
 
 Options:
+   -h, --help            Show this help message and exit.
    -q, --quiet
    --from <from>
-   --config <config>
-   -h, --help            Show this help message and exit.]], parser:get_help())
+   --config <config>]], parser:get_help())
    end)
 
    it("adds margin for multiline descriptions", function()
@@ -97,13 +97,13 @@ Sets verbosity level.
 -vv: Report all debugging information.]]
 
       assert.equal([[
-Usage: foo [-v] [-h]
+Usage: foo [-h] [-v]
 
 Options:
+   -h, --help            Show this help message and exit.
    -v                    Sets verbosity level.
                          -v: Report all warnings.
-                         -vv: Report all debugging information.
-   -h, --help            Show this help message and exit.]], parser:get_help())
+                         -vv: Report all debugging information.]], parser:get_help())
    end)
 
    it("puts different aliases on different lines if there are arguments", function()
@@ -112,12 +112,12 @@ Options:
       parser:option "-o --output"
 
       assert.equal([[
-Usage: foo [-o <output>] [-h]
+Usage: foo [-h] [-o <output>]
 
 Options:
+   -h, --help            Show this help message and exit.
          -o <output>,
-   --output <output>
-   -h, --help            Show this help message and exit.]], parser:get_help())
+   --output <output>]], parser:get_help())
    end)
 
    it("handles description with more lines than usage", function()
@@ -131,13 +131,13 @@ If '-' is passed, output to stdount.
 ]]
 
       assert.equal([[
-Usage: foo [-o <output>] [-h]
+Usage: foo [-h] [-o <output>]
 
 Options:
+   -h, --help            Show this help message and exit.
          -o <output>,    Sets output file.
    --output <output>     If missing, 'a.out' is used by default.
-                         If '-' is passed, output to stdount.
-   -h, --help            Show this help message and exit.]], parser:get_help())
+                         If '-' is passed, output to stdount.]], parser:get_help())
    end)
 
    it("handles description with less lines than usage", function()
@@ -147,12 +147,12 @@ Options:
          :description "Sets output file."
 
       assert.equal([[
-Usage: foo [-o <output>] [-h]
+Usage: foo [-h] [-o <output>]
 
 Options:
+   -h, --help            Show this help message and exit.
          -o <output>,    Sets output file.
-   --output <output>
-   -h, --help            Show this help message and exit.]], parser:get_help())
+   --output <output>]], parser:get_help())
    end)
 
    it("handles very long argument lists", function()
@@ -167,10 +167,10 @@ Options:
 Usage: foo [-h] [-t <foo> <bar> <baz> ...]
 
 Options:
+   -h, --help            Show this help message and exit.
                  -t <foo> <bar> <baz> ...,
    --at-least-three <foo> <bar> <baz> ...
-                         Sometimes argument lists are really long.
-   -h, --help            Show this help message and exit.]], parser:get_help())
+                         Sometimes argument lists are really long.]], parser:get_help())
    end)
 
    it("shows default values", function()
@@ -182,12 +182,12 @@ Options:
          :description "Port."
 
       assert.equal([[
-Usage: foo [-o <o>] [-p <p>] [-h]
+Usage: foo [-h] [-o <o>] [-p <p>]
 
 Options:
+   -h, --help            Show this help message and exit.
    -o <o>                default: a.out
-   -p <p>                Port. (default: 8080)
-   -h, --help            Show this help message and exit.]], parser:get_help())
+   -p <p>                Port. (default: 8080)]], parser:get_help())
    end)
 
    it("does not show default value when show_default == false", function()
@@ -201,12 +201,12 @@ Options:
          :description "Port."
 
       assert.equal([[
-Usage: foo [-o <o>] [-p <p>] [-h]
+Usage: foo [-h] [-o <o>] [-p <p>]
 
 Options:
+   -h, --help            Show this help message and exit.
    -o <o>
-   -p <p>                Port.
-   -h, --help            Show this help message and exit.]], parser:get_help())
+   -p <p>                Port.]], parser:get_help())
    end)
 
    it("creates correct help message for commands", function()
@@ -217,11 +217,11 @@ Options:
       run:option "--where"
 
       assert.equal([[
-Usage: foo [-q] [-h] <command> ...
+Usage: foo [-h] [-q] <command> ...
 
 Options:
-   -q, --quiet
    -h, --help            Show this help message and exit.
+   -q, --quiet
 
 Commands:
    run                   Run! ]], parser:get_help())
@@ -234,11 +234,11 @@ Commands:
       run:option "--where"
 
       assert.equal([[
-Usage: foo run [--where <where>] [-h]
+Usage: foo run [-h] [--where <where>]
 
 Options:
-   --where <where>
-   -h, --help            Show this help message and exit.]], run:get_help())
+   -h, --help            Show this help message and exit.
+   --where <where>]], run:get_help())
    end)
 
    it("uses message provided by user", function()
@@ -265,14 +265,14 @@ I don't like your format of help messages]], parser:get_help())
          :hidden(true)
 
       assert.equal([[
-Usage: foo [--feature] [-h] <normal> <command> ...
+Usage: foo [-h] [--feature] <normal> <command> ...
 
 Arguments:
    normal
 
 Options:
-   --feature
    -h, --help            Show this help message and exit.
+   --feature
 
 Commands:
    good
@@ -359,8 +359,8 @@ Options for setting style:
       parser:command "another-command"
 
       assert.equal([[
-Usage: foo [--use-default-args] [--something] [--test <test>]
-       [--version] [-h] <foo> <bar> [<optional>] <command> ...
+Usage: foo [-h] [--use-default-args] [--something] [--test <test>]
+       [--version] <foo> <bar> [<optional>] <command> ...
 
 Main arguments:
    foo
@@ -375,8 +375,8 @@ Main options:
    --test <test>
 
 Other options:
-   --version
    -h, --help            Show this help message and exit.
+   --version
 
 Some commands:
    foo
@@ -404,7 +404,7 @@ Because it has lots of complex behaviour.
 That needs documenting.]]
 
       assert.equal([[
-Usage: foo [-p] [-f <foo>] [-h] <arg1> <arg2>
+Usage: foo [-h] [-p] [-f <foo>] <arg1> <arg2>
 
 Arguments:
 
@@ -414,13 +414,13 @@ Arguments:
 
 Options:
 
+   -h, --help            Show this help message and exit.
+
    -p                    This is a thing.
 
       -f <foo>,          And this things uses many lines.
    --foo <foo>           Because it has lots of complex behaviour.
-                         That needs documenting.
-
-   -h, --help            Show this help message and exit.]], parser:get_help())
+                         That needs documenting.]], parser:get_help())
    end)
 
    it("inherits help_vertical_space in commands", function()
@@ -439,29 +439,29 @@ Options:
       cmd2:flag("-d", "Do d thing.")
 
       assert.equal([[
-Usage: foo cmd1 [-a] [-b] [-h]
+Usage: foo cmd1 [-h] [-a] [-b]
 
 Options:
+
+
+   -h, --help            Show this help message and exit.
 
 
    -a                    Do a thing.
 
 
-   -b                    Do b thing.
-
-
-   -h, --help            Show this help message and exit.]], cmd1:get_help())
+   -b                    Do b thing.]], cmd1:get_help())
 
       assert.equal([[
-Usage: foo cmd2 [-c] [-d] [-h]
+Usage: foo cmd2 [-h] [-c] [-d]
 
 Options:
 
+   -h, --help            Show this help message and exit.
+
    -c                    Do c thing.
 
-   -d                    Do d thing.
-
-   -h, --help            Show this help message and exit.]], cmd2:get_help())
+   -d                    Do d thing.]], cmd2:get_help())
    end)
 
    it("allows configuring margins using help_usage_margin and help_description_margin", function()
@@ -483,18 +483,18 @@ Because it has lots of complex behaviour.
 That needs documenting.]]
 
       assert.equal([[
-Usage: foo [-p] [-f <foo>] [-h] <arg1> <arg2>
+Usage: foo [-h] [-p] [-f <foo>] <arg1> <arg2>
 
 Arguments:
   arg1         Argument number one.
   arg2         Argument number two.
 
 Options:
+  -h, --help   Show this help message and exit.
   -p           This is a thing.
      -f <foo>, And this things uses many lines.
   --foo <foo>  Because it has lots of complex behaviour.
-               That needs documenting.
-  -h, --help   Show this help message and exit.]], parser:get_help())
+               That needs documenting.]], parser:get_help())
    end)
 
    describe("autowrap", function()
@@ -512,9 +512,10 @@ Options:
             :description "See above."
 
          assert.equal([[
-Usage: foo [-f <foo>] [-b <bar>] [-h]
+Usage: foo [-h] [-f <foo>] [-b <bar>]
 
 Options:
+   -h, --help            Show this help message and exit.
       -f <foo>,          Lorem ipsum dolor sit amet, consectetur adipiscing
    --foo <foo>           elit, sed do eiusmod tempor incididunt ut labore et
                          dolore magna aliqua. Ut enim ad minim veniam, quis
@@ -525,8 +526,7 @@ Options:
                          cupidatat non proident, sunt in culpa qui officia
                          deserunt mollit anim id est laborum.
       -b <bar>,          See above.
-   --bar <bar>
-   -h, --help            Show this help message and exit.]], parser:get_help())
+   --bar <bar>]], parser:get_help())
       end)
 
       it("preserves existing line breaks", function()
@@ -542,16 +542,16 @@ Another one.
          parser:option "-b --bar"
 
          assert.equal([[
-Usage: foo [-f <foo>] [-b <bar>] [-h]
+Usage: foo [-h] [-f <foo>] [-b <bar>]
 
 Options:
+   -h, --help            Show this help message and exit.
       -f <foo>,          This is a long line, it should be broken down into
    --foo <foo>           several lines. It just keeps going and going.
                          This should always be a new line.
                          Another one.
       -b <bar>,
-   --bar <bar>
-   -h, --help            Show this help message and exit.]], parser:get_help())
+   --bar <bar>]], parser:get_help())
       end)
 
       it("preserves indentation", function()
@@ -565,17 +565,17 @@ Options:
                "  That was an empty line there, preserve it.")
 
          assert.equal([[
-Usage: foo [-f <foo>] [-h]
+Usage: foo [-h] [-f <foo>]
 
 Options:
+   -h, --help            Show this help message and exit.
       -f <foo>,          This is a long line, it should be broken down into
    --foo <foo>           several lines.
                             This paragraph is indented with three spaces, so
                             when it gets broken down into several lines, they
                             will be, too.
 
-                           That was an empty line there, preserve it.
-   -h, --help            Show this help message and exit.]], parser:get_help())
+                           That was an empty line there, preserve it.]], parser:get_help())
       end)
 
       it("preserves indentation of list items", function()
@@ -591,9 +591,10 @@ Options:
 
 
       assert.equal([[
-Usage: foo [-f <foo>] [-h]
+Usage: foo [-h] [-f <foo>]
 
 Options:
+   -h, --help            Show this help message and exit.
       -f <foo>,          Let's start a list:
    --foo <foo>
                          * Here is a list item.
@@ -602,8 +603,7 @@ Options:
                            + Here is a nested list item. Word. Word. Word. Word.
                              Word. Bird. Word. Bird. Bird. Bird.
                          *   Back to normal list, this one uses several spaces
-                             after the list item mark. Bird. Bird. Bird.
-   -h, --help            Show this help message and exit.]], parser:get_help())
+                             after the list item mark. Bird. Bird. Bird.]], parser:get_help())
       end)
 
       it("preserves multiple spaces between words", function()
@@ -614,12 +614,12 @@ Options:
             :description("This  is  a  long  line  with  two  spaces  between  words,  it  should  be  broken  down.")
 
          assert.equal([[
-Usage: foo [-f <foo>] [-h]
+Usage: foo [-h] [-f <foo>]
 
 Options:
+   -h, --help            Show this help message and exit.
       -f <foo>,          This  is  a  long  line  with  two  spaces  between
-   --foo <foo>           words,  it  should  be  broken  down.
-   -h, --help            Show this help message and exit.]], parser:get_help())
+   --foo <foo>           words,  it  should  be  broken  down.]], parser:get_help())
       end)
 
       it("autowraps description and epilog", function()
