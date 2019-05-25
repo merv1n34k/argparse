@@ -3,6 +3,7 @@ local Parser = require "argparse"
 
 local parser = Parser()
    :description "A testing program."
+   :add_help_command(true)
    :require_command(false)
 
 parser:argument "input"

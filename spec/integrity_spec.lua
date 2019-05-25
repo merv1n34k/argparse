@@ -77,7 +77,7 @@ Did you mean '--from'?
    end)
 
    describe("help messages", function()
-      it("generates correct help message", function()
+      it("generates correct help message using help flag", function()
          assert.equal([[
 Usage: ]]..script..[[ [-h] [-v] <input> [<command>] ...
 
@@ -91,11 +91,31 @@ Options:
    -v, --verbose         Sets verbosity level.
 
 Commands:
+   help                  Show help for commands.
    install               Install a rock.
 ]], get_output("--help"))
       end)
 
-      it("generates correct help message for command", function()
+      it("generates correct help message using help command", function()
+         assert.equal([[
+Usage: ]]..script..[[ [-h] [-v] <input> [<command>] ...
+
+A testing program.
+
+Arguments:
+   input
+
+Options:
+   -h, --help            Show this help message and exit.
+   -v, --verbose         Sets verbosity level.
+
+Commands:
+   help                  Show help for commands.
+   install               Install a rock.
+]], get_output("foo help"))
+      end)
+
+      it("generates correct help message for command using help flag", function()
          assert.equal([[
 Usage: ]]..script..[[ install [-h] [-f <from>] <rock> [<version>]
 
@@ -110,6 +130,23 @@ Options:
        -f <from>,        Fetch the rock from this server.
    --from <from>
 ]], get_output("foo install --help"))
+      end)
+
+      it("generates correct help message for command using help command", function()
+         assert.equal([[
+Usage: ]]..script..[[ install [-h] [-f <from>] <rock> [<version>]
+
+Install a rock.
+
+Arguments:
+   rock                  Name of the rock.
+   version               Version of the rock.
+
+Options:
+   -h, --help            Show this help message and exit.
+       -f <from>,        Fetch the rock from this server.
+   --from <from>
+]], get_output("foo help install"))
       end)
    end)
 
