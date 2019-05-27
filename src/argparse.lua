@@ -341,6 +341,7 @@ local Argument = class({
    typechecked("defmode", "string"),
    typechecked("show_default", "boolean"),
    typechecked("argname", "string", "table"),
+   typechecked("choices", "table"),
    typechecked("hidden", "boolean"),
    option_action,
    option_init
@@ -363,6 +364,7 @@ local Option = class({
    typechecked("show_default", "boolean"),
    typechecked("overwrite", "boolean"),
    typechecked("argname", "string", "table"),
+   typechecked("choices", "table"),
    typechecked("hidden", "boolean"),
    option_action,
    option_init
@@ -1204,7 +1206,21 @@ function ElementState:invoke()
    return self.open
 end
 
+function ElementState:check_choices(argument)
+   if self.element._choices then
+      for _, choice in ipairs(self.element._choices) do
+         if argument == choice then
+            return
+         end
+      end
+      local choices_list = "'" .. table.concat(self.element._choices, "', '") .. "'"
+      local is_option = getmetatable(self.element) == Option
+      self:error("%s%s must be one of %s", is_option and "argument for " or "", self.name, choices_list)
+   end
+end
+
 function ElementState:pass(argument)
+   self:check_choices(argument)
    argument = self:convert(argument, #self.args + 1)
    table.insert(self.args, argument)
 

@@ -68,3 +68,24 @@ If more than one argument can be consumed, a table is used to store the data.
       pair = {"foo", "bar"},
       optional = "baz"
    }
+
+Setting argument choices
+------------------------
+
+The ``choices`` property can be used to restrict an argument to a set of choices. Its value is an array of string choices.
+
+.. code-block:: lua
+   :linenos:
+
+   parser:argument "direction"
+      :choices {"north", "south", "east", "west"}
+
+.. code-block:: none
+
+   $ lua script.lua foo
+
+.. code-block:: none
+
+   Usage: script.lua [-h] <direction>
+
+   Error: argument 'direction' must be one of 'north', 'south', 'east', 'west'

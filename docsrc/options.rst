@@ -107,6 +107,11 @@ Just as arguments, options can be configured to take several command line argume
 
 Note that the data passed to ``optional`` option is stored in an array. That is necessary to distinguish whether the option was invoked without an argument or it was not invoked at all.
 
+Setting argument choices
+------------------------
+
+The ``choices`` property can be used to specify a list of choices for an option argument in the same way as for arguments.
+
 Setting number of invocations
 -----------------------------
 
