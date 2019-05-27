@@ -255,7 +255,7 @@ local add_help_command = {"add_help_command", function(self, value)
                   end
                end
             end
-            help:error(("invalid command: %s"):format(cmd))
+            help:error(("unknown command '%s'"):format(cmd))
          end)
 
       if value ~= true then
