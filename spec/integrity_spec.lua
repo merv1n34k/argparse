@@ -18,7 +18,7 @@ describe("tests related to CLI behaviour #unsafe", function()
    describe("error messages", function()
       it("generates correct error message without arguments", function()
          assert.equal([[
-Usage: ]]..script..[[ [-v] [-h] <input> [<command>] ...
+Usage: ]]..script..[[ [-h] [-v] <input> [<command>] ...
 
 Error: missing argument 'input'
 ]], get_output(""))
@@ -26,7 +26,7 @@ Error: missing argument 'input'
 
       it("generates correct error message with too many arguments", function()
          assert.equal([[
-Usage: ]]..script..[[ [-v] [-h] <input> [<command>] ...
+Usage: ]]..script..[[ [-h] [-v] <input> [<command>] ...
 
 Error: unknown command 'bar'
 ]], get_output("foo bar"))
@@ -34,7 +34,7 @@ Error: unknown command 'bar'
 
       it("generates correct error message with unexpected argument", function()
          assert.equal([[
-Usage: ]]..script..[[ [-v] [-h] <input> [<command>] ...
+Usage: ]]..script..[[ [-h] [-v] <input> [<command>] ...
 
 Error: option '--verbose' does not take arguments
 ]], get_output("--verbose=true"))
@@ -42,7 +42,7 @@ Error: option '--verbose' does not take arguments
 
       it("generates correct error message with unexpected option", function()
          assert.equal([[
-Usage: ]]..script..[[ [-v] [-h] <input> [<command>] ...
+Usage: ]]..script..[[ [-h] [-v] <input> [<command>] ...
 
 Error: unknown option '-q'
 Did you mean one of these: '-h' '-v'?
@@ -51,7 +51,7 @@ Did you mean one of these: '-h' '-v'?
 
       it("generates correct error message and tip with unexpected command", function()
          assert.equal([[
-Usage: ]]..script..[[ [-v] [-h] <input> [<command>] ...
+Usage: ]]..script..[[ [-h] [-v] <input> [<command>] ...
 
 Error: unknown command 'nstall'
 Did you mean 'install'?
@@ -60,7 +60,7 @@ Did you mean 'install'?
 
       it("generates correct error message without arguments in command", function()
          assert.equal([[
-Usage: ]]..script..[[ install [-f <from>] [-h] <rock> [<version>]
+Usage: ]]..script..[[ install [-h] [-f <from>] <rock> [<version>]
 
 Error: missing argument 'rock'
 ]], get_output("foo install"))
@@ -68,7 +68,7 @@ Error: missing argument 'rock'
 
       it("generates correct error message and tip in command", function()
          assert.equal([[
-Usage: ]]..script..[[ install [-f <from>] [-h] <rock> [<version>]
+Usage: ]]..script..[[ install [-h] [-f <from>] <rock> [<version>]
 
 Error: unknown option '--form'
 Did you mean '--from'?
@@ -77,9 +77,9 @@ Did you mean '--from'?
    end)
 
    describe("help messages", function()
-      it("generates correct help message", function()
+      it("generates correct help message using help flag", function()
          assert.equal([[
-Usage: ]]..script..[[ [-v] [-h] <input> [<command>] ...
+Usage: ]]..script..[[ [-h] [-v] <input> [<command>] ...
 
 A testing program.
 
@@ -87,17 +87,37 @@ Arguments:
    input
 
 Options:
-   -v, --verbose         Sets verbosity level.
    -h, --help            Show this help message and exit.
+   -v, --verbose         Sets verbosity level.
 
 Commands:
+   help                  Show help for commands.
    install               Install a rock.
 ]], get_output("--help"))
       end)
 
-      it("generates correct help message for command", function()
+      it("generates correct help message using help command", function()
          assert.equal([[
-Usage: ]]..script..[[ install [-f <from>] [-h] <rock> [<version>]
+Usage: ]]..script..[[ [-h] [-v] <input> [<command>] ...
+
+A testing program.
+
+Arguments:
+   input
+
+Options:
+   -h, --help            Show this help message and exit.
+   -v, --verbose         Sets verbosity level.
+
+Commands:
+   help                  Show help for commands.
+   install               Install a rock.
+]], get_output("foo help"))
+      end)
+
+      it("generates correct help message for command using help flag", function()
+         assert.equal([[
+Usage: ]]..script..[[ install [-h] [-f <from>] <rock> [<version>]
 
 Install a rock.
 
@@ -106,10 +126,27 @@ Arguments:
    version               Version of the rock.
 
 Options:
+   -h, --help            Show this help message and exit.
        -f <from>,        Fetch the rock from this server.
    --from <from>
-   -h, --help            Show this help message and exit.
 ]], get_output("foo install --help"))
+      end)
+
+      it("generates correct help message for command using help command", function()
+         assert.equal([[
+Usage: ]]..script..[[ install [-h] [-f <from>] <rock> [<version>]
+
+Install a rock.
+
+Arguments:
+   rock                  Name of the rock.
+   version               Version of the rock.
+
+Options:
+   -h, --help            Show this help message and exit.
+       -f <from>,        Fetch the rock from this server.
+   --from <from>
+]], get_output("foo help install"))
       end)
    end)
 

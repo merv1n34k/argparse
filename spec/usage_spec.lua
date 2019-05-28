@@ -320,7 +320,7 @@ Usage: foo ([--opt1 <opt1>] | [--opt3 <opt3>] | [--opt5 <opt5>])
          :args "*"
 
       assert.equals([=[
-Usage: foo [--set-important-property <set_important_property>] [-h]
+Usage: foo [-h] [--set-important-property <set_important_property>]
   <long_argument_name> <very_long_words> [--include [<include>] ...]]=], parser:get_usage())
    end)
 
@@ -336,9 +336,9 @@ Usage: foo [--set-important-property <set_important_property>] [-h]
          :args "*"
 
       assert.equals([=[
-Usage: foo
+Usage: foo [-h]
        [--set-important-property <set_important_property>]
-       [-h] <long_argument_name> <very_long_words>
+       <long_argument_name> <very_long_words>
        [--include [<include>] ...]]=], parser:get_usage())
    end)
 end)

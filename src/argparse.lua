@@ -202,9 +202,9 @@ end}
 local add_help = {"add_help", function(self, value)
    typecheck("add_help", {"boolean", "string", "table"}, value)
 
-   if self._has_help then
-      table.remove(self._options)
-      self._has_help = false
+   if self._help_option_idx then
+      table.remove(self._options, self._help_option_idx)
+      self._help_option_idx = nil
    end
 
    if value then
@@ -223,7 +223,50 @@ local add_help = {"add_help", function(self, value)
          help "-h" "--help"
       end
 
-      self._has_help = true
+      self._help_option_idx = #self._options
+   end
+end}
+
+local add_help_command = {"add_help_command", function(self, value)
+   typecheck("add_help_command", {"boolean", "string", "table"}, value)
+
+   if self._help_command_idx then
+      table.remove(self._commands, self._help_command_idx)
+      self._help_command_idx = nil
+   end
+
+   if value then
+      local help = self:command()
+         :description "Show help for commands."
+      help:argument "command"
+         :description "The command to show help for."
+         :args "?"
+         :action(function(_, _, cmd)
+            if not cmd then
+               print(self:get_help())
+               os.exit(0)
+            else
+               for _, command in ipairs(self._commands) do
+                  for _, alias in ipairs(command._aliases) do
+                     if alias == cmd then
+                        print(command:get_help())
+                        os.exit(0)
+                     end
+                  end
+               end
+            end
+            help:error(("unknown command '%s'"):format(cmd))
+         end)
+
+      if value ~= true then
+         help = help(value)
+      end
+
+      if not help._name then
+         help "help"
+      end
+
+      self._help_command_idx = #self._commands
    end
 end}
 
@@ -252,7 +295,8 @@ local Parser = class({
    typechecked("help_usage_margin", "number"),
    typechecked("help_description_margin", "number"),
    typechecked("help_max_width", "number"),
-   add_help
+   add_help,
+   add_help_command
 })
 
 local Command = class({
@@ -600,13 +644,7 @@ end
 
 function Parser:option(...)
    local option = Option(...)
-
-   if self._has_help then
-      table.insert(self._options, #self._options, option)
-   else
-      table.insert(self._options, option)
-   end
-
+   table.insert(self._options, option)
    return option
 end
 
