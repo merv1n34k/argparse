@@ -204,6 +204,9 @@ local add_help = {"add_help", function(self, value)
 
    if self._help_option_idx then
       table.remove(self._options, self._help_option_idx)
+      if self._complete_option_idx and self._complete_option_idx > self._help_option_idx then
+         self._complete_option_idx = self._complete_option_idx - 1
+      end
       self._help_option_idx = nil
    end
 
@@ -224,6 +227,39 @@ local add_help = {"add_help", function(self, value)
       end
 
       self._help_option_idx = #self._options
+   end
+end}
+
+local add_complete = {"add_complete", function(self, value)
+   typecheck("add_complete", {"boolean", "string", "table"}, value)
+
+   if self._complete_option_idx then
+      table.remove(self._options, self._complete_option_idx)
+      if self._help_option_idx and self._help_option_idx > self._complete_option_idx then
+         self._help_option_idx = self._help_option_idx - 1
+      end
+      self._complete_option_idx = nil
+   end
+
+   if value then
+      local complete = self:option()
+         :description "Output a shell completion script for the specified shell."
+         :args(1)
+         :choices {"bash", "zsh", "fish"}
+         :action(function(_, _, shell)
+            self["get_" .. shell .. "_complete"](self)
+            os.exit(0)
+         end)
+
+      if value ~= true then
+         complete = complete(value)
+      end
+
+      if not complete._name then
+         complete "--completion"
+      end
+
+      self._complete_option_idx = #self._options
    end
 end}
 
@@ -252,7 +288,8 @@ local Parser = class({
    typechecked("help_usage_margin", "number"),
    typechecked("help_description_margin", "number"),
    typechecked("help_max_width", "number"),
-   add_help
+   add_help,
+   add_complete
 })
 
 local Command = class({
@@ -1081,6 +1118,33 @@ function Parser:add_help_command(value)
    end
 
    return self
+end
+
+function Parser:get_bash_complete() print "not yet implemented" end
+
+function Parser:get_zsh_complete() print "not yet implemented" end
+
+function Parser:get_fish_complete()
+   local lines = {}
+
+   for _, option in ipairs(self._options) do
+      local parts = {}
+      for _, alias in ipairs(option._aliases) do
+         if alias:match("^%-.$") then
+            table.insert(parts, "-s " .. alias:sub(2))
+         elseif alias:match "^%-%-.+" then
+            table.insert(parts, "-l " .. alias:sub(3))
+         end
+      end
+      if option._minargs > 0 then
+         table.insert(parts, "-r")
+      end
+      table.insert(parts, ("-d '%s'"):format(option._description:gsub("[\\']", "\\%0")))
+      local line = ("complete -c %s %s"):format(self._name, table.concat(parts, " "))
+      table.insert(lines, line)
+   end
+
+   io.write(table.concat(lines, "\n"), "\n")
 end
 
 local function get_tip(context, wrong_name)
