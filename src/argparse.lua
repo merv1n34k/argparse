@@ -1124,25 +1124,72 @@ function Parser:get_bash_complete() print "not yet implemented" end
 
 function Parser:get_zsh_complete() print "not yet implemented" end
 
-function Parser:get_fish_complete()
-   local lines = {}
+local function fish_escape(string)
+   return string:gsub("[\\']", "\\%0")
+end
+
+function Parser:_fish_complete_help(lines, prefix)
+   for _, command in ipairs(self._commands) do
+      for _, alias in ipairs(command._aliases) do
+         local line = ("%s -n '__fish_use_subcommand' -xa '%s' -d '%s'")
+            :format(prefix, alias, fish_escape(command._description))
+         table.insert(lines, line)
+      end
+   end
 
    for _, option in ipairs(self._options) do
-      local parts = {}
+      local parts = {prefix}
+
+      if self._parent then
+         local aliases = table.concat(self._aliases, " ")
+         local condition = ("-n '__fish_seen_subcommand_from %s'"):format(aliases)
+         table.insert(parts, condition)
+      end
+
       for _, alias in ipairs(option._aliases) do
          if alias:match("^%-.$") then
             table.insert(parts, "-s " .. alias:sub(2))
-         elseif alias:match "^%-%-.+" then
+         elseif alias:match("^%-%-.+") then
             table.insert(parts, "-l " .. alias:sub(3))
          end
       end
-      if option._minargs > 0 then
+
+      if option._choices then
+         local choices = ("-xa '%s'"):format(table.concat(option._choices, " "))
+         table.insert(parts, choices)
+      elseif option._minargs > 0 then
          table.insert(parts, "-r")
       end
-      table.insert(parts, ("-d '%s'"):format(option._description:gsub("[\\']", "\\%0")))
-      local line = ("complete -c %s %s"):format(self._name, table.concat(parts, " "))
-      table.insert(lines, line)
+
+      if option._description then
+         local description = ("-d '%s'"):format(fish_escape(option._description))
+         table.insert(parts, description)
+      end
+
+      table.insert(lines, table.concat(parts, " "))
    end
+
+   for _, command in ipairs(self._commands) do
+      command:_fish_complete_help(lines, prefix)
+   end
+end
+
+function Parser:get_fish_complete()
+   local lines = {}
+   local prefix = ("complete -c %s"):format(self._name)
+
+   if self._help_command_idx then
+      local help_cmd = self._commands[self._help_command_idx]
+      local help_aliases = table.concat(help_cmd._aliases, " ")
+
+      for _, command in ipairs(self._commands) do
+         local line = ("%s -n '__fish_seen_subcommand_from %s' -xa '%s'")
+            :format(prefix, help_aliases, command._aliases[1])
+         table.insert(lines, line)
+      end
+   end
+
+   self:_fish_complete_help(lines, prefix)
 
    io.write(table.concat(lines, "\n"), "\n")
 end
