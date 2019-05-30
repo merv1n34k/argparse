@@ -513,17 +513,33 @@ function Argument:_get_argname(narg)
    end
 end
 
+function Argument:_get_choices_list()
+   return "{" .. table.concat(self._choices, ",") .. "}"
+end
+
 function Argument:_get_default_argname()
-   return "<" .. self._name .. ">"
+   if self._choices then
+      return self:_get_choices_list()
+   else
+      return "<" .. self._name .. ">"
+   end
 end
 
 function Option:_get_default_argname()
-   return "<" .. self:_get_default_target() .. ">"
+   if self._choices then
+      return self:_get_choices_list()
+   else
+      return "<" .. self:_get_default_target() .. ">"
+   end
 end
 
 -- Returns labels to be shown in the help message.
 function Argument:_get_label_lines()
-   return {self._name}
+   if self._choices then
+      return {self:_get_choices_list()}
+   else
+      return {self._name}
+   end
 end
 
 function Option:_get_label_lines()

@@ -89,6 +89,30 @@ Usage: foo <first> <second-and-third> <second-and-third>
       )
    end)
 
+   it("creates correct usage message for arguments with choices", function()
+      local parser = Parser "foo"
+         :add_help(false)
+      parser:argument "move"
+         :choices {"rock", "paper", "scissors"}
+
+      assert.equal(
+         [=[Usage: foo {rock,paper,scissors}]=],
+         parser:get_usage()
+      )
+   end)
+
+   it("creates correct usage message for options with argument choices", function()
+      local parser = Parser "foo"
+         :add_help(false)
+      parser:option "--format"
+         :choices {"short", "medium", "full"}
+
+      assert.equal(
+         [=[Usage: foo [--format {short,medium,full}]]=],
+         parser:get_usage()
+      )
+   end)
+
    it("creates correct usage message for commands", function()
       local parser = Parser "foo"
          :add_help(false)

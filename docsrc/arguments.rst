@@ -86,6 +86,6 @@ The ``choices`` property can be used to restrict an argument to a set of choices
 
 .. code-block:: none
 
-   Usage: script.lua [-h] <direction>
+   Usage: script.lua [-h] {north,south,east,west}
 
    Error: argument 'direction' must be one of 'north', 'south', 'east', 'west'
