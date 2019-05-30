@@ -1120,6 +1120,11 @@ function Parser:add_help_command(value)
    return self
 end
 
+local function get_short_description(element)
+   local short = element._description:match("^(.-)%.%s")
+   return short or element._description:match("^(.-)%.?$")
+end
+
 function Parser:get_bash_complete() print "not yet implemented" end
 
 function Parser:get_zsh_complete() print "not yet implemented" end
@@ -1131,8 +1136,13 @@ end
 function Parser:_fish_complete_help(lines, prefix)
    for _, command in ipairs(self._commands) do
       for _, alias in ipairs(command._aliases) do
-         local line = ("%s -n '__fish_use_subcommand' -xa '%s' -d '%s'")
-            :format(prefix, alias, fish_escape(command._description))
+         local line = ("%s -n '__fish_use_subcommand' -xa '%s'"):format(prefix, alias)
+
+         if command._description then
+            local description = fish_escape(get_short_description(command))
+            line = ("%s -d '%s'"):format(line, description)
+         end
+
          table.insert(lines, line)
       end
    end
@@ -1162,7 +1172,7 @@ function Parser:_fish_complete_help(lines, prefix)
       end
 
       if option._description then
-         local description = ("-d '%s'"):format(fish_escape(option._description))
+         local description = ("-d '%s'"):format(fish_escape(get_short_description(option)))
          table.insert(parts, description)
       end
 
