@@ -247,7 +247,7 @@ local add_complete = {"add_complete", function(self, value)
          :args(1)
          :choices {"bash", "zsh", "fish"}
          :action(function(_, _, shell)
-            self["get_" .. shell .. "_complete"](self)
+            print(self["get_" .. shell .. "_complete"](self))
             os.exit(0)
          end)
 
@@ -1201,7 +1201,7 @@ function Parser:get_fish_complete()
 
    self:_fish_complete_help(lines, prefix)
 
-   io.write(table.concat(lines, "\n"), "\n")
+   return table.concat(lines, "\n")
 end
 
 local function get_tip(context, wrong_name)
