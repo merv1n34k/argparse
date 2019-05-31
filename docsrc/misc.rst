@@ -242,6 +242,7 @@ Property            Type
 ``defmode``         String
 ``show_default``    Boolean
 ``argname``         String or table
+``choices``         Table
 ``action``          Function or string
 ``init``            Any
 ``hidden``          Boolean
@@ -273,6 +274,7 @@ Property            Type
 ``show_default``    Boolean
 ``overwrite``       Booleans
 ``argname``         String or table
+``choices``         Table
 ``action``          Function or string
 ``init``            Any
 ``hidden``          Boolean

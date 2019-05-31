@@ -161,5 +161,15 @@ describe("tests related to positional arguments", function()
          }
          assert.has_error(function() parser:parse{} end, "missing argument 'foo1'")
       end)
+
+      it("handles invalid argument choices correctly", function()
+         local parse = Parser()
+         parse:argument "foo" {
+            choices = {"bar", "baz", "qu"}
+         }
+         assert.has_error(function()
+            parse:parse{"foo", "quu"}
+         end, "argument 'foo' must be one of 'bar', 'baz', 'qu'")
+      end)
    end)
 end)

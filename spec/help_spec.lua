@@ -77,6 +77,34 @@ Options:
    --config <config>]], parser:get_help())
    end)
 
+   it("creates correct help message for arguments with choices", function()
+      local parser = Parser "foo"
+      parser:argument "move"
+         :choices {"rock", "paper", "scissors"}
+
+      assert.equal([[
+Usage: foo [-h] {rock,paper,scissors}
+
+Arguments:
+   {rock,paper,scissors}
+
+Options:
+   -h, --help            Show this help message and exit.]], parser:get_help())
+   end)
+
+   it("creates correct help message for options with argument choices", function()
+      local parser = Parser "foo"
+      parser:option "--format"
+         :choices {"short", "medium", "full"}
+
+      assert.equal([[
+Usage: foo [-h] [--format {short,medium,full}]
+
+Options:
+   -h, --help            Show this help message and exit.
+   --format {short,medium,full}]], parser:get_help())
+   end)
+
    it("adds margin for multiline descriptions", function()
       local parser = Parser "foo"
       parser:flag "-v"

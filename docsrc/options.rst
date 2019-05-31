@@ -107,6 +107,27 @@ Just as arguments, options can be configured to take several command line argume
 
 Note that the data passed to ``optional`` option is stored in an array. That is necessary to distinguish whether the option was invoked without an argument or it was not invoked at all.
 
+Setting argument choices
+------------------------
+
+The ``choices`` property can be used to specify a list of choices for an option argument in the same way as for arguments.
+
+.. code-block:: lua
+   :linenos:
+
+   parser:option "--format"
+      :choices {"short", "medium", "full"}
+
+.. code-block:: none
+
+   $ lua script.lua --format foo
+
+.. code-block:: none
+
+   Usage: script.lua [-h] [--format {short,medium,full}]
+
+   Error: argument for option '--format' must be one of 'short', 'medium', 'full'
+
 Setting number of invocations
 -----------------------------
 

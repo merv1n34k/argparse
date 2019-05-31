@@ -290,6 +290,16 @@ describe("tests related to options", function()
          end, "too many arguments")
       end)
 
+      it("handles invalid argument choices correctly", function()
+         local parse = Parser()
+         parse:option "-s" "--server" {
+            choices = {"foo", "bar", "baz"}
+         }
+         assert.has_error(function()
+            parse:parse{"-slocalhost"}
+         end, "argument for option '-s' must be one of 'foo', 'bar', 'baz'")
+      end)
+
       it("doesn't accept GNU-like long options when it doesn't need arguments", function()
          local parser = Parser()
          parser:flag "-q" "--quiet"
