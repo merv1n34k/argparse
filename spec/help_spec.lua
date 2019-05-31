@@ -11,15 +11,6 @@ Options:
    -h, --help            Show this help message and exit.]], parser:get_help())
    end)
 
-   it("does not create extra help options when :prepare is called several times", function()
-      local parser = Parser "foo"
-      assert.equal([[
-Usage: foo [-h]
-
-Options:
-   -h, --help            Show this help message and exit.]], parser:get_help())
-   end)
-
    it("uses custom help option ", function()
       local parser = Parser "foo"
          :add_help "/?"
