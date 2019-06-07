@@ -1110,7 +1110,102 @@ local function get_short_description(element)
    return short or element._description:match("^(.-)%.?$")
 end
 
-function Parser:get_bash_complete() print "not yet implemented" end
+local function get_options(parser)
+   local options = {}
+   for _, option in ipairs(parser._options) do
+      for _, alias in ipairs(option._aliases) do
+         table.insert(options, alias)
+      end
+   end
+   return table.concat(options, " ")
+end
+
+local function get_commands(parser)
+   local commands = {}
+   for _, command in ipairs(parser._commands) do
+      for _, alias in ipairs(command._aliases) do
+         table.insert(commands, alias)
+      end
+   end
+   return table.concat(commands, " ")
+end
+
+function Parser:_bash_get_cmd(buf)
+   local cmds = {}
+   for _, command in ipairs(self._commands) do
+      local pattern = ("%s)"):format(table.concat(command._aliases, "|"))
+      local cmd_assign = ('cmd="%s"'):format(command._aliases[1])
+      table.insert(cmds, (" "):rep(12) .. pattern)
+      table.insert(cmds, (" "):rep(16) .. cmd_assign)
+      table.insert(cmds, (" "):rep(16) .. "break")
+      table.insert(cmds, (" "):rep(16) .. ";;")
+   end
+
+   local get_cmd = ([[
+    for arg in ${COMP_WORDS[@]:1}
+    do
+        case "$arg" in
+%s
+        esac
+    done
+]]):format(table.concat(cmds, "\n"))
+   table.insert(buf, get_cmd)
+end
+
+function Parser:_bash_cmd_completions(buf)
+   local subcmds = {}
+   for idx, command in ipairs(self._commands) do
+      if #command._options > 0 then
+         table.insert(subcmds, (" "):rep(8) .. command._aliases[1] .. ")")
+
+         local opts
+         if idx == self._help_option_idx then
+            opts = ('opts="%s"'):format(get_commands(self))
+         else
+            opts = ('opts="$opts %s"'):format(get_options(command))
+         end
+         table.insert(subcmds, (" "):rep(12) .. opts)
+         table.insert(subcmds, (" "):rep(12) .. ";;")
+      end
+   end
+
+   local cmd_completions = ([[
+    case "$cmd" in
+        %s)
+            opts="$opts %s"
+            ;;
+%s
+    esac
+]]):format(self._name, get_commands(self), table.concat(subcmds, "\n"))
+   table.insert(buf, cmd_completions)
+end
+
+function Parser:get_bash_complete()
+   local buf = {}
+
+   local head = ([[
+_%s() {
+    local cur prev cmd opts arg
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
+    cmd="%s"
+    opts="%s"
+]]):format(self._name, self._name, get_options(self))
+   table.insert(buf, head)
+
+   if #self._commands > 0 then
+      self:_bash_get_cmd(buf)
+      self:_bash_cmd_completions(buf)
+   end
+
+   table.insert(buf, '    COMPREPLY=($(compgen -W "$opts" -- "$cur"))')
+   table.insert(buf, "}\n")
+   local complete = ("complete -F _%s -o bashdefault -o default %s")
+      :format(self._name, self._name)
+   table.insert(buf, complete)
+
+   return table.concat(buf, "\n")
+end
 
 function Parser:get_zsh_complete() print "not yet implemented" end
 
