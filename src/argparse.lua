@@ -1130,6 +1130,32 @@ local function get_commands(parser)
    return table.concat(commands, " ")
 end
 
+function Parser:_bash_option_args(buf, indent)
+   local opts = {}
+   for _, option in ipairs(self._options) do
+      if option._choices or option._minargs > 0 then
+         local pattern = ("%s)"):format(table.concat(option._aliases, "|"))
+         local compreply
+         if option._choices then
+            compreply = ('COMPREPLY=($(compgen -W "%s" -- "$cur"))')
+               :format(table.concat(option._choices, " "))
+         else
+            compreply = ('COMPREPLY=($(compgen -f "$cur"))')
+         end
+         table.insert(opts, (" "):rep(indent + 4) .. pattern)
+         table.insert(opts, (" "):rep(indent + 8) .. compreply)
+         table.insert(opts, (" "):rep(indent + 8) .. "return 0")
+         table.insert(opts, (" "):rep(indent + 8) .. ";;")
+      end
+   end
+
+   if #opts > 0 then
+      table.insert(buf, (" "):rep(indent) .. 'case "$prev" in')
+      table.insert(buf, table.concat(opts, "\n"))
+      table.insert(buf, (" "):rep(indent) .. "esac\n")
+   end
+end
+
 function Parser:_bash_get_cmd(buf)
    local cmds = {}
    for _, command in ipairs(self._commands) do
@@ -1157,6 +1183,7 @@ function Parser:_bash_cmd_completions(buf)
    for idx, command in ipairs(self._commands) do
       if #command._options > 0 then
          table.insert(subcmds, (" "):rep(8) .. command._aliases[1] .. ")")
+         command:_bash_option_args(subcmds, 12)
 
          local opts
          if idx == self._help_option_idx then
@@ -1192,6 +1219,8 @@ _%s() {
     opts="%s"
 ]]):format(self._name, self._name, get_options(self))
    table.insert(buf, head)
+
+   self:_bash_option_args(buf, 4)
 
    if #self._commands > 0 then
       self:_bash_get_cmd(buf)
