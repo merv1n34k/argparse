@@ -227,27 +227,6 @@ local add_help = {"add_help", function(self, value)
    end
 end}
 
-local add_complete = {"add_complete", function(self, value)
-   typecheck("add_complete", {"nil", "string", "table"}, value)
-
-   local complete = self:option()
-      :description "Output a shell completion script for the specified shell."
-      :args(1)
-      :choices {"bash", "zsh", "fish"}
-      :action(function(_, _, shell)
-         print(self["get_" .. shell .. "_complete"](self))
-         os.exit(0)
-      end)
-
-   if value then
-      complete = complete(value)
-   end
-
-   if not complete._name then
-      complete "--completion"
-   end
-end}
-
 local Parser = class({
    _arguments = {},
    _options = {},
@@ -273,8 +252,7 @@ local Parser = class({
    typechecked("help_usage_margin", "number"),
    typechecked("help_description_margin", "number"),
    typechecked("help_max_width", "number"),
-   add_help,
-   add_complete
+   add_help
 })
 
 local Command = class({
@@ -1100,6 +1078,32 @@ function Parser:add_help_command(value)
 
    if not help._name then
       help "help"
+   end
+
+   return self
+end
+
+function Parser:add_complete(value)
+   if value then
+      assert(type(value) == "string" or type(value) == "table",
+         ("bad argument #1 to 'add_complete' (string or table expected, got %s)"):format(type(value)))
+   end
+
+   local complete = self:option()
+      :description "Output a shell completion script for the specified shell."
+      :args(1)
+      :choices {"bash", "zsh", "fish"}
+      :action(function(_, _, shell)
+         print(self["get_" .. shell .. "_complete"](self))
+         os.exit(0)
+      end)
+
+   if value then
+      complete = complete(value)
+   end
+
+   if not complete._name then
+      complete "--completion"
    end
 
    return self
