@@ -227,49 +227,6 @@ local add_help = {"add_help", function(self, value)
    end
 end}
 
-local add_help_command = {"add_help_command", function(self, value)
-   typecheck("add_help_command", {"boolean", "string", "table"}, value)
-
-   if self._help_command_idx then
-      table.remove(self._commands, self._help_command_idx)
-      self._help_command_idx = nil
-   end
-
-   if value then
-      local help = self:command()
-         :description "Show help for commands."
-      help:argument "command"
-         :description "The command to show help for."
-         :args "?"
-         :action(function(_, _, cmd)
-            if not cmd then
-               print(self:get_help())
-               os.exit(0)
-            else
-               for _, command in ipairs(self._commands) do
-                  for _, alias in ipairs(command._aliases) do
-                     if alias == cmd then
-                        print(command:get_help())
-                        os.exit(0)
-                     end
-                  end
-               end
-            end
-            help:error(("unknown command '%s'"):format(cmd))
-         end)
-
-      if value ~= true then
-         help = help(value)
-      end
-
-      if not help._name then
-         help "help"
-      end
-
-      self._help_command_idx = #self._commands
-   end
-end}
-
 local Parser = class({
    _arguments = {},
    _options = {},
@@ -295,8 +252,7 @@ local Parser = class({
    typechecked("help_usage_margin", "number"),
    typechecked("help_description_margin", "number"),
    typechecked("help_max_width", "number"),
-   add_help,
-   add_help_command
+   add_help
 })
 
 local Command = class({
@@ -1085,6 +1041,45 @@ function Parser:get_help()
    end
 
    return table.concat(blocks, "\n\n")
+end
+
+function Parser:add_help_command(value)
+   if value then
+      assert(type(value) == "string" or type(value) == "table",
+         ("bad argument #1 to 'add_help_command' (string or table expected, got %s)"):format(type(value)))
+   end
+
+   local help = self:command()
+      :description "Show help for commands."
+   help:argument "command"
+      :description "The command to show help for."
+      :args "?"
+      :action(function(_, _, cmd)
+         if not cmd then
+            print(self:get_help())
+            os.exit(0)
+         else
+            for _, command in ipairs(self._commands) do
+               for _, alias in ipairs(command._aliases) do
+                  if alias == cmd then
+                     print(command:get_help())
+                     os.exit(0)
+                  end
+               end
+            end
+         end
+         help:error(("unknown command '%s'"):format(cmd))
+      end)
+
+   if value then
+      help = help(value)
+   end
+
+   if not help._name then
+      help "help"
+   end
+
+   return self
 end
 
 local function get_tip(context, wrong_name)
