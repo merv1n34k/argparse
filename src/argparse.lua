@@ -1144,7 +1144,7 @@ function Parser:_bash_option_args(buf, indent)
             compreply = ('COMPREPLY=($(compgen -W "%s" -- "$cur"))')
                :format(table.concat(option._choices, " "))
          else
-            compreply = ('COMPREPLY=($(compgen -f "$cur"))')
+            compreply = 'COMPREPLY=($(compgen -f "$cur"))'
          end
          table.insert(opts, (" "):rep(indent + 4) .. pattern)
          table.insert(opts, (" "):rep(indent + 8) .. compreply)
@@ -1163,23 +1163,21 @@ end
 function Parser:_bash_get_cmd(buf)
    local cmds = {}
    for idx, command in ipairs(self._commands) do
-      table.insert(cmds, (" "):rep(12) .. ("%s)"):format(table.concat(command._aliases, "|")))
       if idx ~= self._help_command_idx then
+         table.insert(cmds, (" "):rep(12) .. ("%s)"):format(table.concat(command._aliases, "|")))
          table.insert(cmds, (" "):rep(16) .. ('cmd="%s"'):format(command._aliases[1]))
+         table.insert(cmds, (" "):rep(16) .. "break")
+         table.insert(cmds, (" "):rep(16) .. ";;")
       end
-      table.insert(cmds, (" "):rep(16) .. "break")
-      table.insert(cmds, (" "):rep(16) .. ";;")
    end
 
-   local get_cmd = ([[
-    for arg in ${COMP_WORDS[@]:1}
-    do
-        case "$arg" in
-%s
-        esac
-    done
-]]):format(table.concat(cmds, "\n"))
-   table.insert(buf, get_cmd)
+   if #cmds > 0 then
+      table.insert(buf, (" "):rep(4) .. "for arg in ${COMP_WORDS[@]:1}; do")
+      table.insert(buf, (" "):rep(8) .. 'case "$arg" in')
+      table.insert(buf, table.concat(cmds, "\n"))
+      table.insert(buf, (" "):rep(8) .. "esac")
+      table.insert(buf, (" "):rep(4) .. "done\n")
+   end
 end
 
 function Parser:_bash_cmd_completions(buf)
@@ -1193,15 +1191,14 @@ function Parser:_bash_cmd_completions(buf)
       end
    end
 
-   local cmd_completions = ([[
-    case "$cmd" in
-        %s)
-            COMPREPLY=($(compgen -W "%s" -- "$cur"))
-            ;;
-%s
-    esac
-]]):format(self._name, get_commands(self), table.concat(subcmds, "\n"))
-   table.insert(buf, cmd_completions)
+   table.insert(buf, (" "):rep(4) .. 'case "$cmd" in')
+   table.insert(buf, (" "):rep(8) .. self._name .. ")")
+   table.insert(buf, (" "):rep(12) .. ('COMPREPLY=($(compgen -W "%s" -- "$cur"))'):format(get_commands(self)))
+   table.insert(buf, (" "):rep(12) .. ";;")
+   if #subcmds > 0 then
+      table.insert(buf, table.concat(subcmds, "\n"))
+   end
+   table.insert(buf, (" "):rep(4) .. "esac\n")
 end
 
 function Parser:get_bash_complete()
@@ -1215,21 +1212,18 @@ _%s() {
 ]]):format(self._name, self._name, get_options(self))}
 
    self:_bash_option_args(buf, 4)
-
+   self:_bash_get_cmd(buf)
    if #self._commands > 0 then
-      self:_bash_get_cmd(buf)
       self:_bash_cmd_completions(buf)
    end
 
-   table.insert(buf, [=[
-    if [[ "$cur" = -* ]]
-    then
+   table.insert(buf, ([=[
+    if [[ "$cur" = -* ]]; then
         COMPREPLY=($(compgen -W "$opts" -- "$cur"))
-    fi]=])
-   table.insert(buf, "}\n")
-   local complete = ("complete -F _%s -o bashdefault -o default %s")
-      :format(self._name, self._name)
-   table.insert(buf, complete)
+    fi
+}
+
+complete -F _%s -o bashdefault -o default %s]=]):format(self._name, self._name))
 
    return table.concat(buf, "\n")
 end

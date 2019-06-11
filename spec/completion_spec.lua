@@ -13,8 +13,7 @@ _foo() {
     cmd="foo"
     opts="-h --help"
 
-    if [[ "$cur" = -* ]]
-    then
+    if [[ "$cur" = -* ]]; then
         COMPREPLY=($(compgen -W "$opts" -- "$cur"))
     fi
 }
@@ -41,8 +40,7 @@ _foo() {
             ;;
     esac
 
-    if [[ "$cur" = -* ]]
-    then
+    if [[ "$cur" = -* ]]; then
         COMPREPLY=($(compgen -W "$opts" -- "$cur"))
     fi
 }
@@ -70,8 +68,7 @@ _foo() {
             ;;
     esac
 
-    if [[ "$cur" = -* ]]
-    then
+    if [[ "$cur" = -* ]]; then
         COMPREPLY=($(compgen -W "$opts" -- "$cur"))
     fi
 }
@@ -92,8 +89,7 @@ _foo() {
     cmd="foo"
     opts=""
 
-    for arg in ${COMP_WORDS[@]:1}
-    do
+    for arg in ${COMP_WORDS[@]:1}; do
         case "$arg" in
             install)
                 cmd="install"
@@ -106,11 +102,9 @@ _foo() {
         foo)
             COMPREPLY=($(compgen -W "install" -- "$cur"))
             ;;
-
     esac
 
-    if [[ "$cur" = -* ]]
-    then
+    if [[ "$cur" = -* ]]; then
         COMPREPLY=($(compgen -W "$opts" -- "$cur"))
     fi
 }
@@ -132,8 +126,7 @@ _foo() {
     cmd="foo"
     opts=""
 
-    for arg in ${COMP_WORDS[@]:1}
-    do
+    for arg in ${COMP_WORDS[@]:1}; do
         case "$arg" in
             install)
                 cmd="install"
@@ -151,8 +144,7 @@ _foo() {
             ;;
     esac
 
-    if [[ "$cur" = -* ]]
-    then
+    if [[ "$cur" = -* ]]; then
         COMPREPLY=($(compgen -W "$opts" -- "$cur"))
     fi
 }
@@ -174,12 +166,8 @@ _foo() {
     cmd="foo"
     opts=""
 
-    for arg in ${COMP_WORDS[@]:1}
-    do
+    for arg in ${COMP_WORDS[@]:1}; do
         case "$arg" in
-            help)
-                break
-                ;;
             install)
                 cmd="install"
                 break
@@ -191,11 +179,9 @@ _foo() {
         foo)
             COMPREPLY=($(compgen -W "help install" -- "$cur"))
             ;;
-
     esac
 
-    if [[ "$cur" = -* ]]
-    then
+    if [[ "$cur" = -* ]]; then
         COMPREPLY=($(compgen -W "$opts" -- "$cur"))
     fi
 }
