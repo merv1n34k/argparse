@@ -1162,11 +1162,11 @@ end
 
 function Parser:_bash_get_cmd(buf)
    local cmds = {}
-   for _, command in ipairs(self._commands) do
-      local pattern = ("%s)"):format(table.concat(command._aliases, "|"))
-      local cmd_assign = ('cmd="%s"'):format(command._aliases[1])
-      table.insert(cmds, (" "):rep(12) .. pattern)
-      table.insert(cmds, (" "):rep(16) .. cmd_assign)
+   for idx, command in ipairs(self._commands) do
+      table.insert(cmds, (" "):rep(12) .. ("%s)"):format(table.concat(command._aliases, "|")))
+      if idx ~= self._help_command_idx then
+         table.insert(cmds, (" "):rep(16) .. ('cmd="%s"'):format(command._aliases[1]))
+      end
       table.insert(cmds, (" "):rep(16) .. "break")
       table.insert(cmds, (" "):rep(16) .. ";;")
    end
@@ -1185,17 +1185,10 @@ end
 function Parser:_bash_cmd_completions(buf)
    local subcmds = {}
    for idx, command in ipairs(self._commands) do
-      if #command._options > 0 then
+      if #command._options > 0 and idx ~= self._help_command_idx then
          table.insert(subcmds, (" "):rep(8) .. command._aliases[1] .. ")")
          command:_bash_option_args(subcmds, 12)
-
-         local opts
-         if idx == self._help_option_idx then
-            opts = ('opts="%s"'):format(get_commands(self))
-         else
-            opts = ('opts="$opts %s"'):format(get_options(command))
-         end
-         table.insert(subcmds, (" "):rep(12) .. opts)
+         table.insert(subcmds, (" "):rep(12) .. ('opts="$opts %s"'):format(get_options(command)))
          table.insert(subcmds, (" "):rep(12) .. ";;")
       end
    end
@@ -1203,7 +1196,7 @@ function Parser:_bash_cmd_completions(buf)
    local cmd_completions = ([[
     case "$cmd" in
         %s)
-            opts="$opts %s"
+            COMPREPLY=($(compgen -W "%s" -- "$cur"))
             ;;
 %s
     esac
@@ -1212,17 +1205,14 @@ function Parser:_bash_cmd_completions(buf)
 end
 
 function Parser:get_bash_complete()
-   local buf = {}
-
-   local head = ([[
+   local buf = {([[
 _%s() {
     local cur prev cmd opts arg
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
     cmd="%s"
     opts="%s"
-]]):format(self._name, self._name, get_options(self))
-   table.insert(buf, head)
+]]):format(self._name, self._name, get_options(self))}
 
    self:_bash_option_args(buf, 4)
 
@@ -1231,7 +1221,11 @@ _%s() {
       self:_bash_cmd_completions(buf)
    end
 
-   table.insert(buf, '    COMPREPLY=($(compgen -W "$opts" -- "$cur"))')
+   table.insert(buf, [=[
+    if [[ "$cur" = -* ]]
+    then
+        COMPREPLY=($(compgen -W "$opts" -- "$cur"))
+    fi]=])
    table.insert(buf, "}\n")
    local complete = ("complete -F _%s -o bashdefault -o default %s")
       :format(self._name, self._name)
