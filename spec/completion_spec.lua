@@ -2,6 +2,208 @@ local Parser = require "argparse"
 getmetatable(Parser()).error = function(_, msg) error(msg) end
 
 describe("tests related to generation of shell completion scripts", function()
+   describe("bash completion scripts", function()
+      it("generates correct completions for help flag", function()
+         local parser = Parser "foo"
+         assert.equal([=[
+_foo() {
+    local cur prev cmd opts arg
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
+    cmd="foo"
+    opts="-h --help"
+
+    if [[ "$cur" = -* ]]
+    then
+        COMPREPLY=($(compgen -W "$opts" -- "$cur"))
+    fi
+}
+
+complete -F _foo -o bashdefault -o default foo]=], parser:get_bash_complete())
+      end)
+
+      it("generates correct completions for options with required argument", function()
+         local parser = Parser "foo"
+            :add_help(false)
+         parser:option "--bar"
+         assert.equal([=[
+_foo() {
+    local cur prev cmd opts arg
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
+    cmd="foo"
+    opts="--bar"
+
+    case "$prev" in
+        --bar)
+            COMPREPLY=($(compgen -f "$cur"))
+            return 0
+            ;;
+    esac
+
+    if [[ "$cur" = -* ]]
+    then
+        COMPREPLY=($(compgen -W "$opts" -- "$cur"))
+    fi
+}
+
+complete -F _foo -o bashdefault -o default foo]=], parser:get_bash_complete())
+      end)
+
+      it("generates correct completions for options with argument choices", function()
+         local parser = Parser "foo"
+            :add_help(false)
+         parser:option "--format"
+            :choices {"short", "medium", "full"}
+         assert.equal([=[
+_foo() {
+    local cur prev cmd opts arg
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
+    cmd="foo"
+    opts="--format"
+
+    case "$prev" in
+        --format)
+            COMPREPLY=($(compgen -W "short medium full" -- "$cur"))
+            return 0
+            ;;
+    esac
+
+    if [[ "$cur" = -* ]]
+    then
+        COMPREPLY=($(compgen -W "$opts" -- "$cur"))
+    fi
+}
+
+complete -F _foo -o bashdefault -o default foo]=], parser:get_bash_complete())
+      end)
+
+      it("generates correct completions for commands", function()
+         local parser = Parser "foo"
+            :add_help(false)
+         parser:command "install"
+            :add_help(false)
+         assert.equal([=[
+_foo() {
+    local cur prev cmd opts arg
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
+    cmd="foo"
+    opts=""
+
+    for arg in ${COMP_WORDS[@]:1}
+    do
+        case "$arg" in
+            install)
+                cmd="install"
+                break
+                ;;
+        esac
+    done
+
+    case "$cmd" in
+        foo)
+            COMPREPLY=($(compgen -W "install" -- "$cur"))
+            ;;
+
+    esac
+
+    if [[ "$cur" = -* ]]
+    then
+        COMPREPLY=($(compgen -W "$opts" -- "$cur"))
+    fi
+}
+
+complete -F _foo -o bashdefault -o default foo]=], parser:get_bash_complete())
+      end)
+
+      it("generates correct completions for command options", function()
+         local parser = Parser "foo"
+            :add_help(false)
+         local install = parser:command "install"
+            :add_help(false)
+         install:flag "-v --verbose"
+         assert.equal([=[
+_foo() {
+    local cur prev cmd opts arg
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
+    cmd="foo"
+    opts=""
+
+    for arg in ${COMP_WORDS[@]:1}
+    do
+        case "$arg" in
+            install)
+                cmd="install"
+                break
+                ;;
+        esac
+    done
+
+    case "$cmd" in
+        foo)
+            COMPREPLY=($(compgen -W "install" -- "$cur"))
+            ;;
+        install)
+            opts="$opts -v --verbose"
+            ;;
+    esac
+
+    if [[ "$cur" = -* ]]
+    then
+        COMPREPLY=($(compgen -W "$opts" -- "$cur"))
+    fi
+}
+
+complete -F _foo -o bashdefault -o default foo]=], parser:get_bash_complete())
+      end)
+
+      it("generates completions for help command argument", function()
+         local parser = Parser "foo"
+            :add_help(false)
+            :add_help_command {add_help = false}
+         parser:command "install"
+            :add_help(false)
+         assert.equal([=[
+_foo() {
+    local cur prev cmd opts arg
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
+    cmd="foo"
+    opts=""
+
+    for arg in ${COMP_WORDS[@]:1}
+    do
+        case "$arg" in
+            help)
+                break
+                ;;
+            install)
+                cmd="install"
+                break
+                ;;
+        esac
+    done
+
+    case "$cmd" in
+        foo)
+            COMPREPLY=($(compgen -W "help install" -- "$cur"))
+            ;;
+
+    esac
+
+    if [[ "$cur" = -* ]]
+    then
+        COMPREPLY=($(compgen -W "$opts" -- "$cur"))
+    fi
+}
+
+complete -F _foo -o bashdefault -o default foo]=], parser:get_bash_complete())
+      end)
+   end)
+
    describe("fish completion scripts", function()
       it("generates correct completions for help flag", function()
          local parser = Parser "foo"
