@@ -201,6 +201,7 @@ Other properties:
 =========================== ==========================
 Property                    Type
 =========================== ==========================
+``summary``                 String
 ``target``                  String
 ``usage``                   String
 ``help``                    String

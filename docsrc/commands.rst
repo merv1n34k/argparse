@@ -140,3 +140,43 @@ This can be changed using ``require_command`` property.
    local parser = argparse()
       :require_command(false)
    parser:command "install"
+
+Command summaries
+-----------------
+
+The description for commands shown in the parent parser help message can be set
+with the ``summary`` property.
+
+.. code-block:: lua
+   :linenos:
+
+   parser:command "install"
+      :summary "Install a rock."
+      :description "A long description for the install command."
+
+.. code-block:: none
+
+   $ lua script.lua --help
+
+.. code-block:: none
+
+   Usage: script.lua [-h] <command> ...
+
+   Options:
+      -h, --help            Show this help message and exit.
+
+   Commands:
+      install               Install a rock.
+
+.. code-block:: none
+
+   $ lua script.lua install --help
+
+.. code-block:: none
+
+   Usage: script.lua install [-h]
+
+   A long description for the install command.
+
+   Options:
+      -h, --help            Show this help message and exit.
