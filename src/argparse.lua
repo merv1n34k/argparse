@@ -306,6 +306,7 @@ local Command = class({
    multiname,
    typechecked("description", "string"),
    typechecked("epilog", "string"),
+   typechecked("summary", "string"),
    typechecked("target", "string"),
    typechecked("usage", "string"),
    typechecked("help", "string"),
@@ -589,7 +590,7 @@ function Argument:_get_description()
 end
 
 function Command:_get_description()
-   return self._description or ""
+   return self._summary or self._description or ""
 end
 
 function Option:_get_usage()
