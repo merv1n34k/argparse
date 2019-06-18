@@ -18,7 +18,8 @@ _foo() {
     fi
 }
 
-complete -F _foo -o bashdefault -o default foo]=], parser:get_bash_complete())
+complete -F _foo -o bashdefault -o default foo
+]=], parser:get_bash_complete())
       end)
 
       it("generates correct completions for options with required argument", function()
@@ -45,7 +46,8 @@ _foo() {
     fi
 }
 
-complete -F _foo -o bashdefault -o default foo]=], parser:get_bash_complete())
+complete -F _foo -o bashdefault -o default foo
+]=], parser:get_bash_complete())
       end)
 
       it("generates correct completions for options with argument choices", function()
@@ -73,7 +75,8 @@ _foo() {
     fi
 }
 
-complete -F _foo -o bashdefault -o default foo]=], parser:get_bash_complete())
+complete -F _foo -o bashdefault -o default foo
+]=], parser:get_bash_complete())
       end)
 
       it("generates correct completions for commands", function()
@@ -109,7 +112,8 @@ _foo() {
     fi
 }
 
-complete -F _foo -o bashdefault -o default foo]=], parser:get_bash_complete())
+complete -F _foo -o bashdefault -o default foo
+]=], parser:get_bash_complete())
       end)
 
       it("generates correct completions for command options", function()
@@ -149,7 +153,8 @@ _foo() {
     fi
 }
 
-complete -F _foo -o bashdefault -o default foo]=], parser:get_bash_complete())
+complete -F _foo -o bashdefault -o default foo
+]=], parser:get_bash_complete())
       end)
 
       it("generates completions for help command argument", function()
@@ -186,7 +191,8 @@ _foo() {
     fi
 }
 
-complete -F _foo -o bashdefault -o default foo]=], parser:get_bash_complete())
+complete -F _foo -o bashdefault -o default foo
+]=], parser:get_bash_complete())
       end)
    end)
 
@@ -194,7 +200,8 @@ complete -F _foo -o bashdefault -o default foo]=], parser:get_bash_complete())
       it("generates correct completions for help flag", function()
          local parser = Parser "foo"
          assert.equal([[
-complete -c foo -s h -l help -d 'Show this help message and exit']], parser:get_fish_complete())
+complete -c foo -s h -l help -d 'Show this help message and exit'
+]], parser:get_fish_complete())
       end)
 
       it("generates correct completions for options with required argument", function()
@@ -202,7 +209,8 @@ complete -c foo -s h -l help -d 'Show this help message and exit']], parser:get_
             :add_help(false)
          parser:option "--bar"
          assert.equal([[
-complete -c foo -l bar -r]], parser:get_fish_complete())
+complete -c foo -l bar -r
+]], parser:get_fish_complete())
       end)
 
       it("generates correct completions for options with argument choices", function()
@@ -211,7 +219,8 @@ complete -c foo -l bar -r]], parser:get_fish_complete())
          parser:option "--format"
             :choices {"short", "medium", "full"}
          assert.equal([[
-complete -c foo -l format -xa 'short medium full']], parser:get_fish_complete())
+complete -c foo -l format -xa 'short medium full'
+]], parser:get_fish_complete())
       end)
 
       it("generates correct completions for commands", function()
@@ -221,7 +230,8 @@ complete -c foo -l format -xa 'short medium full']], parser:get_fish_complete())
             :add_help(false)
             :description "Install a rock."
          assert.equal([[
-complete -c foo -n '__fish_use_subcommand' -xa 'install' -d 'Install a rock']], parser:get_fish_complete())
+complete -c foo -n '__fish_use_subcommand' -xa 'install' -d 'Install a rock'
+]], parser:get_fish_complete())
       end)
 
       it("generates correct completions for command options", function()
@@ -232,7 +242,8 @@ complete -c foo -n '__fish_use_subcommand' -xa 'install' -d 'Install a rock']], 
          install:flag "-v --verbose"
          assert.equal([[
 complete -c foo -n '__fish_use_subcommand' -xa 'install'
-complete -c foo -n '__fish_seen_subcommand_from install' -s v -l verbose]], parser:get_fish_complete())
+complete -c foo -n '__fish_seen_subcommand_from install' -s v -l verbose
+]], parser:get_fish_complete())
       end)
 
       it("generates completions for help command argument", function()
@@ -245,7 +256,8 @@ complete -c foo -n '__fish_seen_subcommand_from install' -s v -l verbose]], pars
 complete -c foo -n '__fish_seen_subcommand_from help' -xa 'help'
 complete -c foo -n '__fish_seen_subcommand_from help' -xa 'install'
 complete -c foo -n '__fish_use_subcommand' -xa 'help' -d 'Show help for commands'
-complete -c foo -n '__fish_use_subcommand' -xa 'install']], parser:get_fish_complete())
+complete -c foo -n '__fish_use_subcommand' -xa 'install'
+]], parser:get_fish_complete())
       end)
 
       it("uses fist sentence of descriptions", function()
@@ -254,7 +266,8 @@ complete -c foo -n '__fish_use_subcommand' -xa 'install']], parser:get_fish_comp
          parser:option "--bar"
             :description "A description with a .period. Another sentence."
          assert.equal([[
-complete -c foo -l bar -r -d 'A description with a .period']], parser:get_fish_complete())
+complete -c foo -l bar -r -d 'A description with a .period'
+]], parser:get_fish_complete())
       end)
 
       it("escapes backslashes and single quotes in descriptions", function()
@@ -263,7 +276,8 @@ complete -c foo -l bar -r -d 'A description with a .period']], parser:get_fish_c
          parser:option "--bar"
             :description "A description with illegal \\' characters."
          assert.equal([[
-complete -c foo -l bar -r -d 'A description with illegal \\\' characters']], parser:get_fish_complete())
+complete -c foo -l bar -r -d 'A description with illegal \\\' characters'
+]], parser:get_fish_complete())
       end)
    end)
 end)

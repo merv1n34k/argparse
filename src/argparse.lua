@@ -1095,7 +1095,7 @@ function Parser:add_complete(value)
       :args(1)
       :choices {"bash", "zsh", "fish"}
       :action(function(_, _, shell)
-         print(self["get_" .. shell .. "_complete"](self))
+         io.write(self["get_" .. shell .. "_complete"](self))
          os.exit(0)
       end)
 
@@ -1224,7 +1224,8 @@ _%s() {
     fi
 }
 
-complete -F _%s -o bashdefault -o default %s]=]):format(self._name, self._name))
+complete -F _%s -o bashdefault -o default %s
+]=]):format(self._name, self._name))
 
    return table.concat(buf, "\n")
 end
@@ -1302,7 +1303,7 @@ function Parser:get_fish_complete()
 
    self:_fish_complete_help(lines, prefix)
 
-   return table.concat(lines, "\n")
+   return table.concat(lines, "\n") .. "\n"
 end
 
 local function get_tip(context, wrong_name)
