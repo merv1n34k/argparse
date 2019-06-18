@@ -1,9 +1,10 @@
 #!/usr/bin/env lua
+
 local Parser = require "argparse"
 
 local parser = Parser()
    :description "A testing program."
-   :add_help_command(true)
+   :add_help_command()
    :require_command(false)
 
 parser:argument "input"

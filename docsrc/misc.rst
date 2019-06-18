@@ -31,13 +31,13 @@ If the property ``add_help`` of a parser is set to ``false``, no help option wil
 Help command
 ------------
 
-If the property ``add_help_command`` of a parser is set to ``true``, a help command will be added to it. A string or table value can be used to configure the command.
+A help command can be added to the parser using the ``:add_help_command([value])`` method. It accepts an optional string or table value which is used to configure the command.
 
 .. code-block:: lua
    :linenos:
 
    local parser = argparse()
-      :add_help_command(true)
+      :add_help_command()
    parser:command "install"
       :description "Install a rock."
 
@@ -173,7 +173,6 @@ Property                    Type
 ``require_command``         Boolean
 ``handle_options``          Boolean
 ``add_help``                Boolean or string or table
-``add_help_command``        Boolean or string or table
 ``command_target``          String
 ``usage_max_width``         Number
 ``usage_margin``            Number
