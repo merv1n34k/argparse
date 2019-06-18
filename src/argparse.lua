@@ -1111,8 +1111,8 @@ function Parser:add_complete(value)
 end
 
 local function get_short_description(element)
-   local short = element._description:match("^(.-)%.%s")
-   return short or element._description:match("^(.-)%.?$")
+   local short = element:_get_description():match("^(.-)%.%s")
+   return short or element:_get_description():match("^(.-)%.?$")
 end
 
 local function get_options(parser)
