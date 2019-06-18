@@ -1080,6 +1080,7 @@ function Parser:add_help_command(value)
       help "help"
    end
 
+   self._help_command = help
    return self
 end
 
@@ -1162,8 +1163,8 @@ end
 
 function Parser:_bash_get_cmd(buf)
    local cmds = {}
-   for idx, command in ipairs(self._commands) do
-      if idx ~= self._help_command_idx then
+   for _, command in ipairs(self._commands) do
+      if command ~= self._help_command then
          table.insert(cmds, (" "):rep(12) .. ("%s)"):format(table.concat(command._aliases, "|")))
          table.insert(cmds, (" "):rep(16) .. ('cmd="%s"'):format(command._aliases[1]))
          table.insert(cmds, (" "):rep(16) .. "break")
@@ -1182,8 +1183,8 @@ end
 
 function Parser:_bash_cmd_completions(buf)
    local subcmds = {}
-   for idx, command in ipairs(self._commands) do
-      if #command._options > 0 and idx ~= self._help_command_idx then
+   for _, command in ipairs(self._commands) do
+      if #command._options > 0 and command ~= self._help_command then
          table.insert(subcmds, (" "):rep(8) .. command._aliases[1] .. ")")
          command:_bash_option_args(subcmds, 12)
          table.insert(subcmds, (" "):rep(12) .. ('opts="$opts %s"'):format(get_options(command)))
@@ -1289,9 +1290,8 @@ function Parser:get_fish_complete()
    local lines = {}
    local prefix = ("complete -c %s"):format(self._name)
 
-   if self._help_command_idx then
-      local help_cmd = self._commands[self._help_command_idx]
-      local help_aliases = table.concat(help_cmd._aliases, " ")
+   if self._help_command then
+      local help_aliases = table.concat(self._help_command._aliases, " ")
 
       for _, command in ipairs(self._commands) do
          local line = ("%s -n '__fish_seen_subcommand_from %s' -xa '%s'")
