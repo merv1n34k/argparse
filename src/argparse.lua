@@ -1230,7 +1230,32 @@ complete -F _%s -o bashdefault -o default %s
    return table.concat(buf, "\n")
 end
 
-function Parser:get_zsh_complete() print "not yet implemented" end
+function Parser:get_zsh_complete()
+   local buf = {("compdef _%s %s\n"):format(self._name, self._name)}
+   table.insert(buf, ("_%s() {"):format(self._name))
+   table.insert(buf, "    _arguments -s -S -C \\")
+
+   for _, option in ipairs(self._options) do
+      local line = {}
+      if #option._aliases > 1 then
+         table.insert(line, ("{%s}"):format(table.concat(option._aliases, ",")))
+         if option._description then
+            table.insert(line, ('"[%s]"'):format(get_short_description(option)))
+         end
+      else
+         table.insert(line, '"' .. option._aliases[1])
+         if option._description then
+            table.insert(line, ("[%s]"):format(get_short_description(option)))
+         end
+         table.insert(line, '"')
+      end
+      table.insert(buf, (" "):rep(8) .. table.concat(line) .. " \\")
+   end
+
+   table.insert(buf, "}")
+
+   return table.concat(buf, "\n") .. "\n"
+end
 
 local function fish_escape(string)
    return string:gsub("[\\']", "\\%0")
