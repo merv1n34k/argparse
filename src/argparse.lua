@@ -1233,7 +1233,10 @@ end
 function Parser:get_zsh_complete()
    local buf = {("compdef _%s %s\n"):format(self._name, self._name)}
    table.insert(buf, ("_%s() {"):format(self._name))
-   table.insert(buf, "    _arguments -s -S -C \\")
+   table.insert(buf, "  typeset -A opt_args")
+   table.insert(buf, "  local context state line")
+   table.insert(buf, "  local ret=1\n")
+   table.insert(buf, "  _arguments -s -S -C \\")
 
    for _, option in ipairs(self._options) do
       local line = {}
@@ -1249,9 +1252,11 @@ function Parser:get_zsh_complete()
          end
          table.insert(line, '"')
       end
-      table.insert(buf, (" "):rep(8) .. table.concat(line) .. " \\")
+      table.insert(buf, (" "):rep(4) .. table.concat(line) .. " \\")
    end
 
+   table.insert(buf, "    && ret=0\n")
+   table.insert(buf, "  return ret")
    table.insert(buf, "}")
 
    return table.concat(buf, "\n") .. "\n"
