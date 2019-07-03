@@ -7,6 +7,7 @@ describe("tests related to generation of shell completion scripts", function()
          local parser = Parser "foo"
          assert.equal([=[
 _foo() {
+    local IFS=$' \t\n'
     local cur prev cmd opts arg
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
@@ -28,6 +29,7 @@ complete -F _foo -o bashdefault -o default foo
          parser:option "--bar"
          assert.equal([=[
 _foo() {
+    local IFS=$' \t\n'
     local cur prev cmd opts arg
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
@@ -57,6 +59,7 @@ complete -F _foo -o bashdefault -o default foo
             :choices {"short", "medium", "full"}
          assert.equal([=[
 _foo() {
+    local IFS=$' \t\n'
     local cur prev cmd opts arg
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
@@ -86,6 +89,7 @@ complete -F _foo -o bashdefault -o default foo
             :add_help(false)
          assert.equal([=[
 _foo() {
+    local IFS=$' \t\n'
     local cur prev cmd opts arg
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
@@ -124,6 +128,7 @@ complete -F _foo -o bashdefault -o default foo
          install:flag "-v --verbose"
          assert.equal([=[
 _foo() {
+    local IFS=$' \t\n'
     local cur prev cmd opts arg
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
@@ -165,6 +170,7 @@ complete -F _foo -o bashdefault -o default foo
             :add_help(false)
          assert.equal([=[
 _foo() {
+    local IFS=$' \t\n'
     local cur prev cmd opts arg
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"

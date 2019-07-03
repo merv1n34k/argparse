@@ -1205,6 +1205,7 @@ end
 function Parser:get_bash_complete()
    local buf = {([[
 _%s() {
+    local IFS=$' \t\n'
     local cur prev cmd opts arg
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
