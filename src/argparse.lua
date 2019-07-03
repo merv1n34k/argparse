@@ -1110,6 +1110,33 @@ function Parser:add_complete(value)
    return self
 end
 
+function Parser:add_complete_command(value)
+   if value then
+      assert(type(value) == "string" or type(value) == "table",
+         ("bad argument #1 to 'add_complete_command' (string or table expected, got %s)"):format(type(value)))
+   end
+
+   local complete = self:command()
+      :description "Output a shell completion script."
+   complete:argument "shell"
+      :description "The shell to output a completion script for."
+      :choices {"bash", "zsh", "fish"}
+      :action(function(_, _, shell)
+         io.write(self["get_" .. shell .. "_complete"](self))
+         os.exit(0)
+      end)
+
+   if value then
+      complete = complete(value)
+   end
+
+   if not complete._name then
+      complete "completion"
+   end
+
+   return self
+end
+
 local function get_short_description(element)
    local short = element:_get_description():match("^(.-)%.%s")
    return short or element:_get_description():match("^(.-)%.?$")
