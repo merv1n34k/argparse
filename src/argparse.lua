@@ -1084,11 +1084,40 @@ function Parser:add_help_command(value)
    return self
 end
 
+local function is_shell_safe(parser)
+   if parser._name:find("[^%w_%-%+%.]") then
+      return false
+   end
+   for _, command in ipairs(parser._commands) do
+      for _, alias in ipairs(command._aliases) do
+         if alias:find("[^%w_%-%+%.]") then
+            return false
+         end
+      end
+   end
+   for _, option in ipairs(parser._options) do
+      for _, alias in ipairs(option._aliases) do
+         if alias:find("[^%w_%-%+%.]") then
+            return false
+         end
+         if option._choices then
+            for _, choice in ipairs(option._choices) do
+               if choice:find("[%s'\"]") then
+                  return false
+               end
+            end
+         end
+      end
+   end
+   return true
+end
+
 function Parser:add_complete(value)
    if value then
       assert(type(value) == "string" or type(value) == "table",
          ("bad argument #1 to 'add_complete' (string or table expected, got %s)"):format(type(value)))
    end
+   assert(is_shell_safe(self))
 
    local complete = self:option()
       :description "Output a shell completion script for the specified shell."
@@ -1115,6 +1144,7 @@ function Parser:add_complete_command(value)
       assert(type(value) == "string" or type(value) == "table",
          ("bad argument #1 to 'add_complete_command' (string or table expected, got %s)"):format(type(value)))
    end
+   assert(is_shell_safe(self))
 
    local complete = self:command()
       :description "Output a shell completion script."
