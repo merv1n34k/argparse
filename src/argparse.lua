@@ -1290,27 +1290,38 @@ end
 
 function Parser:get_zsh_complete()
    local buf = {("compdef _%s %s\n"):format(self._name, self._name)}
-   table.insert(buf, ("_%s() {"):format(self._name))
-   table.insert(buf, "  typeset -A opt_args")
-   table.insert(buf, "  local context state line")
-   table.insert(buf, "  local ret=1\n")
-   table.insert(buf, "  _arguments -s -S -C \\")
+   table.insert(buf, "_" .. self._name .. "() {")
+   table.insert(buf, [[
+  local context state state_descr line ret=1
+  typeset -A opt_args
+
+  _arguments -s -S \]])
 
    for _, option in ipairs(self._options) do
       local line = {}
       if #option._aliases > 1 then
-         table.insert(line, ("{%s}"):format(table.concat(option._aliases, ",")))
-         if option._description then
-            table.insert(line, ('"[%s]"'):format(get_short_description(option)))
+         if option._maxcount > 1 then
+            table.insert(line, '"*"')
          end
+         table.insert(line, "{" .. table.concat(option._aliases, ",") .. '}"')
       else
-         table.insert(line, '"' .. option._aliases[1])
-         if option._description then
-            table.insert(line, ("[%s]"):format(get_short_description(option)))
-         end
          table.insert(line, '"')
+         if option._maxcount > 1 then
+            table.insert(line, "*")
+         end
+         table.insert(line, option._aliases[1])
       end
-      table.insert(buf, (" "):rep(4) .. table.concat(line) .. " \\")
+      if option._description then
+         table.insert(line, "[" .. get_short_description(option) .. "]")
+      end
+      if option._choices then
+         table.insert(line, ": :(" .. table.concat(option._choices, " ") .. ")")
+      elseif option._minargs > 0 then
+         table.insert(line, ": :_files")
+      end
+      table.insert(line, '"')
+
+      table.insert(buf, "    " .. table.concat(line) .. " \\")
    end
 
    table.insert(buf, "    && ret=0\n")
