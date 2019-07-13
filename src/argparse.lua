@@ -1288,14 +1288,8 @@ complete -F _%s -o bashdefault -o default %s
    return table.concat(buf, "\n")
 end
 
-function Parser:get_zsh_complete()
-   local buf = {("compdef _%s %s\n"):format(self._name, self._name)}
-   table.insert(buf, "_" .. self._name .. "() {")
-   table.insert(buf, [[
-  local context state state_descr line ret=1
-  typeset -A opt_args
-
-  _arguments -s -S \]])
+function Parser:_zsh_arguments(buf, cmd_name, indent)
+   table.insert(buf, (" "):rep(indent) .. "_arguments -s -S \\")
 
    for _, option in ipairs(self._options) do
       local line = {}
@@ -1321,14 +1315,72 @@ function Parser:get_zsh_complete()
       end
       table.insert(line, '"')
 
-      table.insert(buf, "    " .. table.concat(line) .. " \\")
+      table.insert(buf, (" "):rep(indent + 2) .. table.concat(line) .. " \\")
    end
 
-   table.insert(buf, "    && ret=0\n")
-   table.insert(buf, "  return ret")
+   if #self._commands > 0 then
+      table.insert(buf, (" "):rep(indent + 2) .. '": :_' .. cmd_name .. '_cmds" \\')
+      table.insert(buf, (" "):rep(indent + 2) .. '"*:: :->args" \\')
+   end
+   table.insert(buf, (" "):rep(indent + 2) .. "&& return 0")
+end
+
+function Parser:_zsh_cmds(buf, cmd_name)
+   table.insert(buf, "\n_" .. cmd_name .. "_cmds() {")
+   table.insert(buf, "  local -a commands=(")
+
+   for _, command in ipairs(self._commands) do
+      local line = {}
+      if #command._aliases > 1 then
+         table.insert(line, "{" .. table.concat(command._aliases, ",") .. '}"')
+      else
+         table.insert(line, '"' .. command._aliases[1])
+      end
+      if command._description then
+         table.insert(line, ":" .. get_short_description(command))
+      end
+      table.insert(buf, "    " .. table.concat(line) .. '"')
+   end
+
+   table.insert(buf, '  )\n  _describe "command" commands\n}')
+end
+
+function Parser:_zsh_complete_help(buf, cmds_buf, cmd_name, indent)
+   if #self._commands == 0 then
+      return
+   end
+
+   self:_zsh_cmds(cmds_buf, cmd_name)
+   table.insert(buf, "\n" .. (" "):rep(indent) .. "case $words[1] in")
+
+   for _, command in ipairs(self._commands) do
+      local name = cmd_name .. "_" .. command._aliases[1]
+      table.insert(buf, (" "):rep(indent + 2) .. table.concat(command._aliases, "|") .. ")")
+      command:_zsh_arguments(buf, name, indent + 4)
+      command:_zsh_complete_help(buf, cmds_buf, name, indent + 4)
+      table.insert(buf, (" "):rep(indent + 4) .. ";;\n")
+   end
+
+   table.insert(buf, (" "):rep(indent) .. "esac")
+end
+
+function Parser:get_zsh_complete()
+   local buf = {("compdef _%s %s\n"):format(self._name, self._name)}
+   local cmds_buf = {}
+   table.insert(buf, "_" .. self._name .. "() {")
+   if #self._commands > 0 then
+      table.insert(buf, "  local context state state_descr line")
+      table.insert(buf, "  typeset -A opt_args\n")
+   end
+   self:_zsh_arguments(buf, self._name, 2)
+   self:_zsh_complete_help(buf, cmds_buf, self._name, 2)
    table.insert(buf, "}")
 
-   return table.concat(buf, "\n") .. "\n"
+   local result = table.concat(buf, "\n")
+   if #cmds_buf > 0 then
+      result = result .. "\n" .. table.concat(cmds_buf, "\n")
+   end
+   return result .. "\n"
 end
 
 local function fish_escape(string)
