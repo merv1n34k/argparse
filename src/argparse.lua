@@ -1080,6 +1080,7 @@ function Parser:add_help_command(value)
       help "help"
    end
 
+   help._is_help_command = true
    self._help_command = help
    return self
 end
@@ -1318,10 +1319,31 @@ function Parser:_zsh_arguments(buf, cmd_name, indent)
       table.insert(buf, (" "):rep(indent + 2) .. table.concat(line) .. " \\")
    end
 
-   if #self._commands > 0 then
-      table.insert(buf, (" "):rep(indent + 2) .. '": :_' .. cmd_name .. '_cmds" \\')
-      table.insert(buf, (" "):rep(indent + 2) .. '"*:: :->args" \\')
+   if self._is_help_command then
+      table.insert(buf, (" "):rep(indent + 2) .. '": :(' .. get_commands(self._parent) .. ')" \\')
+   else
+      for _, argument in ipairs(self._arguments) do
+         local spec
+         if argument._choices then
+            spec = ": :(" .. table.concat(argument._choices, " ") .. ")"
+         else
+            spec = ": :_files"
+         end
+         if argument._maxargs == math.huge then
+            table.insert(buf, (" "):rep(indent + 2) .. '"*' .. spec .. '" \\')
+            break
+         end
+         for _ = 1, argument._maxargs do
+            table.insert(buf, (" "):rep(indent + 2) .. '"' .. spec .. '" \\')
+         end
+      end
+
+      if #self._commands > 0 then
+         table.insert(buf, (" "):rep(indent + 2) .. '": :_' .. cmd_name .. '_cmds" \\')
+         table.insert(buf, (" "):rep(indent + 2) .. '"*:: :->args" \\')
+      end
    end
+
    table.insert(buf, (" "):rep(indent + 2) .. "&& return 0")
 end
 
