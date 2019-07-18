@@ -1398,6 +1398,7 @@ function Parser:get_zsh_complete()
    end
    self:_zsh_arguments(buf, self._name, 2)
    self:_zsh_complete_help(buf, cmds_buf, self._name, 2)
+   table.insert(buf, "\n  return 1")
    table.insert(buf, "}")
 
    local result = table.concat(buf, "\n")
