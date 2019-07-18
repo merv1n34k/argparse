@@ -1308,9 +1308,12 @@ function Parser:_zsh_arguments(buf, cmd_name, indent)
       if option._description then
          table.insert(line, "[" .. get_short_description(option) .. "]")
       end
+      if option._maxargs == math.huge then
+         table.insert(line, ":*")
+      end
       if option._choices then
          table.insert(line, ": :(" .. table.concat(option._choices, " ") .. ")")
-      elseif option._minargs > 0 then
+      elseif option._maxargs > 0 then
          table.insert(line, ": :_files")
       end
       table.insert(line, '"')
