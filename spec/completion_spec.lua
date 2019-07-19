@@ -260,8 +260,7 @@ complete -c foo -n '__fish_seen_subcommand_from install' -s v -l verbose
             :add_help(false)
          assert.equal([[
 complete -c foo -n '__fish_use_subcommand' -xa 'help' -d 'Show help for commands'
-complete -c foo -n '__fish_seen_subcommand_from help' -xa 'help'
-complete -c foo -n '__fish_seen_subcommand_from help' -xa 'install'
+complete -c foo -n '__fish_seen_subcommand_from help' -xa 'help install'
 complete -c foo -n '__fish_use_subcommand' -xa 'install'
 ]], parser:get_fish_complete())
       end)

@@ -1084,18 +1084,18 @@ function Parser:add_help_command(value)
    return self
 end
 
-local function is_shell_safe(parser)
-   if parser._name:find("[^%w_%-%+%.]") then
+function Parser:_is_shell_safe()
+   if self._name:find("[^%w_%-%+%.]") then
       return false
    end
-   for _, command in ipairs(parser._commands) do
+   for _, command in ipairs(self._commands) do
       for _, alias in ipairs(command._aliases) do
          if alias:find("[^%w_%-%+%.]") then
             return false
          end
       end
    end
-   for _, option in ipairs(parser._options) do
+   for _, option in ipairs(self._options) do
       for _, alias in ipairs(option._aliases) do
          if alias:find("[^%w_%-%+%.]") then
             return false
@@ -1117,7 +1117,7 @@ function Parser:add_complete(value)
       assert(type(value) == "string" or type(value) == "table",
          ("bad argument #1 to 'add_complete' (string or table expected, got %s)"):format(type(value)))
    end
-   assert(is_shell_safe(self))
+   assert(self:_is_shell_safe())
 
    local complete = self:option()
       :description "Output a shell completion script for the specified shell."
@@ -1144,7 +1144,7 @@ function Parser:add_complete_command(value)
       assert(type(value) == "string" or type(value) == "table",
          ("bad argument #1 to 'add_complete_command' (string or table expected, got %s)"):format(type(value)))
    end
-   assert(is_shell_safe(self))
+   assert(self:_is_shell_safe())
 
    local complete = self:command()
       :description "Output a shell completion script."
@@ -1172,9 +1172,9 @@ local function get_short_description(element)
    return short or element:_get_description():match("^(.-)%.?$")
 end
 
-local function get_options(parser)
+function Parser:_get_options()
    local options = {}
-   for _, option in ipairs(parser._options) do
+   for _, option in ipairs(self._options) do
       for _, alias in ipairs(option._aliases) do
          table.insert(options, alias)
       end
@@ -1182,9 +1182,9 @@ local function get_options(parser)
    return table.concat(options, " ")
 end
 
-local function get_commands(parser)
+function Parser:_get_commands()
    local commands = {}
-   for _, command in ipairs(parser._commands) do
+   for _, command in ipairs(self._commands) do
       for _, alias in ipairs(command._aliases) do
          table.insert(commands, alias)
       end
@@ -1196,15 +1196,13 @@ function Parser:_bash_option_args(buf, indent)
    local opts = {}
    for _, option in ipairs(self._options) do
       if option._choices or option._minargs > 0 then
-         local pattern = ("%s)"):format(table.concat(option._aliases, "|"))
          local compreply
          if option._choices then
-            compreply = ('COMPREPLY=($(compgen -W "%s" -- "$cur"))')
-               :format(table.concat(option._choices, " "))
+            compreply = 'COMPREPLY=($(compgen -W "' .. table.concat(option._choices, " ") .. '" -- "$cur"))'
          else
             compreply = 'COMPREPLY=($(compgen -f "$cur"))'
          end
-         table.insert(opts, (" "):rep(indent + 4) .. pattern)
+         table.insert(opts, (" "):rep(indent + 4) .. table.concat(option._aliases, "|") .. ")")
          table.insert(opts, (" "):rep(indent + 8) .. compreply)
          table.insert(opts, (" "):rep(indent + 8) .. "return 0")
          table.insert(opts, (" "):rep(indent + 8) .. ";;")
@@ -1222,8 +1220,8 @@ function Parser:_bash_get_cmd(buf)
    local cmds = {}
    for _, command in ipairs(self._commands) do
       if not command._is_help_command then
-         table.insert(cmds, (" "):rep(12) .. ("%s)"):format(table.concat(command._aliases, "|")))
-         table.insert(cmds, (" "):rep(16) .. ('cmd="%s"'):format(command._aliases[1]))
+         table.insert(cmds, (" "):rep(12) .. table.concat(command._aliases, "|") .. ")")
+         table.insert(cmds, (" "):rep(16) .. 'cmd="' .. command._aliases[1] .. '"')
          table.insert(cmds, (" "):rep(16) .. "break")
          table.insert(cmds, (" "):rep(16) .. ";;")
       end
@@ -1244,14 +1242,14 @@ function Parser:_bash_cmd_completions(buf)
       if #command._options > 0 and not command._is_help_command then
          table.insert(subcmds, (" "):rep(8) .. command._aliases[1] .. ")")
          command:_bash_option_args(subcmds, 12)
-         table.insert(subcmds, (" "):rep(12) .. ('opts="$opts %s"'):format(get_options(command)))
+         table.insert(subcmds, (" "):rep(12) .. 'opts="$opts ' .. command:_get_options() .. '"')
          table.insert(subcmds, (" "):rep(12) .. ";;")
       end
    end
 
    table.insert(buf, (" "):rep(4) .. 'case "$cmd" in')
    table.insert(buf, (" "):rep(8) .. self._name .. ")")
-   table.insert(buf, (" "):rep(12) .. ('COMPREPLY=($(compgen -W "%s" -- "$cur"))'):format(get_commands(self)))
+   table.insert(buf, (" "):rep(12) .. 'COMPREPLY=($(compgen -W "' .. self:_get_commands() .. '" -- "$cur"))')
    table.insert(buf, (" "):rep(12) .. ";;")
    if #subcmds > 0 then
       table.insert(buf, table.concat(subcmds, "\n"))
@@ -1268,7 +1266,7 @@ _%s() {
     prev="${COMP_WORDS[COMP_CWORD-1]}"
     cmd="%s"
     opts="%s"
-]]):format(self._name, self._name, get_options(self))}
+]]):format(self._name, self._name, self:_get_options())}
 
    self:_bash_option_args(buf, 4)
    self:_bash_get_cmd(buf)
@@ -1322,7 +1320,7 @@ function Parser:_zsh_arguments(buf, cmd_name, indent)
    end
 
    if self._is_help_command then
-      table.insert(buf, (" "):rep(indent + 2) .. '": :(' .. get_commands(self._parent) .. ')" \\')
+      table.insert(buf, (" "):rep(indent + 2) .. '": :(' .. self._parent:_get_commands() .. ')" \\')
    else
       for _, argument in ipairs(self._arguments) do
          local spec
@@ -1412,25 +1410,20 @@ local function fish_escape(string)
    return string:gsub("[\\']", "\\%0")
 end
 
-function Parser:_fish_complete_help(lines, prefix)
+function Parser:_fish_complete_help(buf, prefix)
    for _, command in ipairs(self._commands) do
       for _, alias in ipairs(command._aliases) do
          local line = ("%s -n '__fish_use_subcommand' -xa '%s'"):format(prefix, alias)
          if command._description then
-            local description = fish_escape(get_short_description(command))
-            line = ("%s -d '%s'"):format(line, description)
+            line = ("%s -d '%s'"):format(line, fish_escape(get_short_description(command)))
          end
-         table.insert(lines, line)
+         table.insert(buf, line)
       end
 
       if command._is_help_command then
-         local help_aliases = table.concat(command._aliases, " ")
-
-         for _, cmd in ipairs(self._commands) do
-            local line = ("%s -n '__fish_seen_subcommand_from %s' -xa '%s'")
-               :format(prefix, help_aliases, table.concat(cmd._aliases, " "))
-            table.insert(lines, line)
-         end
+         local line = ("%s -n '__fish_seen_subcommand_from %s' -xa '%s'")
+            :format(prefix, table.concat(command._aliases, " "), self:_get_commands())
+         table.insert(buf, line)
       end
    end
 
@@ -1438,9 +1431,7 @@ function Parser:_fish_complete_help(lines, prefix)
       local parts = {prefix}
 
       if self._parent then
-         local aliases = table.concat(self._aliases, " ")
-         local condition = ("-n '__fish_seen_subcommand_from %s'"):format(aliases)
-         table.insert(parts, condition)
+         table.insert(parts, "-n '__fish_seen_subcommand_from " .. table.concat(self._aliases, " ") .. "'")
       end
 
       for _, alias in ipairs(option._aliases) do
@@ -1452,30 +1443,28 @@ function Parser:_fish_complete_help(lines, prefix)
       end
 
       if option._choices then
-         local choices = ("-xa '%s'"):format(table.concat(option._choices, " "))
-         table.insert(parts, choices)
+         table.insert(parts, "-xa '" .. table.concat(option._choices, " ") .. "'")
       elseif option._minargs > 0 then
          table.insert(parts, "-r")
       end
 
       if option._description then
-         local description = ("-d '%s'"):format(fish_escape(get_short_description(option)))
-         table.insert(parts, description)
+         table.insert(parts, "-d '" .. fish_escape(get_short_description(option)) .. "'")
       end
 
-      table.insert(lines, table.concat(parts, " "))
+      table.insert(buf, table.concat(parts, " "))
    end
 
    for _, command in ipairs(self._commands) do
-      command:_fish_complete_help(lines, prefix)
+      command:_fish_complete_help(buf, prefix)
    end
 end
 
 function Parser:get_fish_complete()
-   local lines = {}
-   local prefix = ("complete -c %s"):format(self._name)
-   self:_fish_complete_help(lines, prefix)
-   return table.concat(lines, "\n") .. "\n"
+   local buf = {}
+   local prefix = "complete -c " .. self._name
+   self:_fish_complete_help(buf, prefix)
+   return table.concat(buf, "\n") .. "\n"
 end
 
 local function get_tip(context, wrong_name)
