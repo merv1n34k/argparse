@@ -1,0 +1,42 @@
+#!/usr/bin/env lua
+
+local argparse = require "argparse"
+
+local parser = argparse "comptest"
+   :add_help_command()
+   :add_complete_command()
+
+parser:option "-f --files"
+   :description "A description with illegal \\' characters."
+   :args "+"
+
+parser:option "--direction"
+   :description "The direction to go in."
+   :choices {"north", "south", "east", "west"}
+
+local install = parser:command "install i"
+   :description "Install a rock."
+
+install:option "--deps-mode"
+   :choices {"all", "one", "order", "none"}
+
+install:flag "--no-doc"
+   :description "Install without documentation."
+
+install:option "--pair"
+   :description "A pair of files."
+   :args "2"
+   :count "*"
+
+local admin = parser:command "admin"
+   :add_help_command()
+
+local admin_add = admin:command "add"
+   :description "Add a rock to a server."
+admin_add:argument "rock"
+
+local admin_remove = admin:command "remove"
+   :description "Remove a rock from  a server."
+admin_remove:argument "rock"
+
+parser:parse()

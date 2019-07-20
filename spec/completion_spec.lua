@@ -1,155 +1,81 @@
-local Parser = require "argparse"
-getmetatable(Parser()).error = function(_, msg) error(msg) end
+local script = "./spec/comptest"
+local script_cmd = "lua"
+
+if package.loaded["luacov.runner"] then
+   script_cmd = script_cmd .. " -lluacov"
+end
+
+script_cmd = script_cmd .. " " .. script
+
+local function get_output(args)
+   local handler = io.popen(script_cmd .. " " .. args .. " 2>&1", "r")
+   local output = handler:read("*a")
+   handler:close()
+   return output
+end
 
 describe("tests related to generation of shell completion scripts", function()
-   describe("bash completion scripts", function()
-      it("generates correct completions for help flag", function()
-         local parser = Parser "foo"
-         assert.equal([=[
-_foo() {
+   it("generates correct bash completion script", function()
+      assert.equal([=[
+_comptest() {
     local IFS=$' \t\n'
     local cur prev cmd opts arg
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
-    cmd="foo"
-    opts="-h --help"
-
-    if [[ "$cur" = -* ]]; then
-        COMPREPLY=($(compgen -W "$opts" -- "$cur"))
-    fi
-}
-
-complete -F _foo -o bashdefault -o default foo
-]=], parser:get_bash_complete())
-      end)
-
-      it("generates correct completions for options with required argument", function()
-         local parser = Parser "foo"
-            :add_help(false)
-         parser:option "--bar"
-         assert.equal([=[
-_foo() {
-    local IFS=$' \t\n'
-    local cur prev cmd opts arg
-    cur="${COMP_WORDS[COMP_CWORD]}"
-    prev="${COMP_WORDS[COMP_CWORD-1]}"
-    cmd="foo"
-    opts="--bar"
+    cmd="comptest"
+    opts="-h --help -f --files --direction"
 
     case "$prev" in
-        --bar)
+        -f|--files)
             COMPREPLY=($(compgen -f "$cur"))
             return 0
             ;;
-    esac
-
-    if [[ "$cur" = -* ]]; then
-        COMPREPLY=($(compgen -W "$opts" -- "$cur"))
-    fi
-}
-
-complete -F _foo -o bashdefault -o default foo
-]=], parser:get_bash_complete())
-      end)
-
-      it("generates correct completions for options with argument choices", function()
-         local parser = Parser "foo"
-            :add_help(false)
-         parser:option "--format"
-            :choices {"short", "medium", "full"}
-         assert.equal([=[
-_foo() {
-    local IFS=$' \t\n'
-    local cur prev cmd opts arg
-    cur="${COMP_WORDS[COMP_CWORD]}"
-    prev="${COMP_WORDS[COMP_CWORD-1]}"
-    cmd="foo"
-    opts="--format"
-
-    case "$prev" in
-        --format)
-            COMPREPLY=($(compgen -W "short medium full" -- "$cur"))
+        --direction)
+            COMPREPLY=($(compgen -W "north south east west" -- "$cur"))
             return 0
             ;;
     esac
 
-    if [[ "$cur" = -* ]]; then
-        COMPREPLY=($(compgen -W "$opts" -- "$cur"))
-    fi
-}
-
-complete -F _foo -o bashdefault -o default foo
-]=], parser:get_bash_complete())
-      end)
-
-      it("generates correct completions for commands", function()
-         local parser = Parser "foo"
-            :add_help(false)
-         parser:command "install"
-            :add_help(false)
-         assert.equal([=[
-_foo() {
-    local IFS=$' \t\n'
-    local cur prev cmd opts arg
-    cur="${COMP_WORDS[COMP_CWORD]}"
-    prev="${COMP_WORDS[COMP_CWORD-1]}"
-    cmd="foo"
-    opts=""
-
     for arg in ${COMP_WORDS[@]:1}; do
         case "$arg" in
-            install)
+            completion)
+                cmd="completion"
+                break
+                ;;
+            install|i)
                 cmd="install"
+                break
+                ;;
+            admin)
+                cmd="admin"
                 break
                 ;;
         esac
     done
 
     case "$cmd" in
-        foo)
-            COMPREPLY=($(compgen -W "install" -- "$cur"))
+        comptest)
+            COMPREPLY=($(compgen -W "help completion install i admin" -- "$cur"))
             ;;
-    esac
-
-    if [[ "$cur" = -* ]]; then
-        COMPREPLY=($(compgen -W "$opts" -- "$cur"))
-    fi
-}
-
-complete -F _foo -o bashdefault -o default foo
-]=], parser:get_bash_complete())
-      end)
-
-      it("generates correct completions for command options", function()
-         local parser = Parser "foo"
-            :add_help(false)
-         local install = parser:command "install"
-            :add_help(false)
-         install:flag "-v --verbose"
-         assert.equal([=[
-_foo() {
-    local IFS=$' \t\n'
-    local cur prev cmd opts arg
-    cur="${COMP_WORDS[COMP_CWORD]}"
-    prev="${COMP_WORDS[COMP_CWORD-1]}"
-    cmd="foo"
-    opts=""
-
-    for arg in ${COMP_WORDS[@]:1}; do
-        case "$arg" in
-            install)
-                cmd="install"
-                break
-                ;;
-        esac
-    done
-
-    case "$cmd" in
-        foo)
-            COMPREPLY=($(compgen -W "install" -- "$cur"))
+        completion)
+            opts="$opts -h --help"
             ;;
         install)
-            opts="$opts -v --verbose"
+            case "$prev" in
+                --deps-mode)
+                    COMPREPLY=($(compgen -W "all one order none" -- "$cur"))
+                    return 0
+                    ;;
+                --pair)
+                    COMPREPLY=($(compgen -f "$cur"))
+                    return 0
+                    ;;
+            esac
+
+            opts="$opts -h --help --deps-mode --no-doc --pair"
+            ;;
+        admin)
+            opts="$opts -h --help"
             ;;
     esac
 
@@ -158,131 +84,141 @@ _foo() {
     fi
 }
 
-complete -F _foo -o bashdefault -o default foo
-]=], parser:get_bash_complete())
-      end)
-
-      it("generates completions for help command argument", function()
-         local parser = Parser "foo"
-            :add_help(false)
-            :add_help_command {add_help = false}
-         parser:command "install"
-            :add_help(false)
-         assert.equal([=[
-_foo() {
-    local IFS=$' \t\n'
-    local cur prev cmd opts arg
-    cur="${COMP_WORDS[COMP_CWORD]}"
-    prev="${COMP_WORDS[COMP_CWORD-1]}"
-    cmd="foo"
-    opts=""
-
-    for arg in ${COMP_WORDS[@]:1}; do
-        case "$arg" in
-            install)
-                cmd="install"
-                break
-                ;;
-        esac
-    done
-
-    case "$cmd" in
-        foo)
-            COMPREPLY=($(compgen -W "help install" -- "$cur"))
-            ;;
-    esac
-
-    if [[ "$cur" = -* ]]; then
-        COMPREPLY=($(compgen -W "$opts" -- "$cur"))
-    fi
-}
-
-complete -F _foo -o bashdefault -o default foo
-]=], parser:get_bash_complete())
-      end)
+complete -F _comptest -o bashdefault -o default comptest
+]=], get_output("completion bash"))
    end)
 
-   describe("fish completion scripts", function()
-      it("generates correct completions for help flag", function()
-         local parser = Parser "foo"
-         assert.equal([[
-complete -c foo -s h -l help -d 'Show this help message and exit'
-]], parser:get_fish_complete())
-      end)
+   it("generates correct zsh completion script", function()
+      assert.equal([=[
+compdef _comptest comptest
 
-      it("generates correct completions for options with required argument", function()
-         local parser = Parser "foo"
-            :add_help(false)
-         parser:option "--bar"
-         assert.equal([[
-complete -c foo -l bar -r
-]], parser:get_fish_complete())
-      end)
+_comptest() {
+  local context state state_descr line
+  typeset -A opt_args
 
-      it("generates correct completions for options with argument choices", function()
-         local parser = Parser "foo"
-            :add_help(false)
-         parser:option "--format"
-            :choices {"short", "medium", "full"}
-         assert.equal([[
-complete -c foo -l format -xa 'short medium full'
-]], parser:get_fish_complete())
-      end)
+  _arguments -s -S \
+    {-h,--help}"[Show this help message and exit]" \
+    {-f,--files}"[A description with illegal \' characters]:*: :_files" \
+    "--direction[The direction to go in]: :(north south east west)" \
+    ": :_comptest_cmds" \
+    "*:: :->args" \
+    && return 0
 
-      it("generates correct completions for commands", function()
-         local parser = Parser "foo"
-            :add_help(false)
-         parser:command "install"
-            :add_help(false)
-            :description "Install a rock."
-         assert.equal([[
-complete -c foo -n '__fish_use_subcommand' -xa 'install' -d 'Install a rock'
-]], parser:get_fish_complete())
-      end)
+  case $words[1] in
+    help)
+      _arguments -s -S \
+        {-h,--help}"[Show this help message and exit]" \
+        ": :(help completion install i admin)" \
+        && return 0
+      ;;
 
-      it("generates correct completions for command options", function()
-         local parser = Parser "foo"
-            :add_help(false)
-         local install = parser:command "install"
-            :add_help(false)
-         install:flag "-v --verbose"
-         assert.equal([[
-complete -c foo -n '__fish_use_subcommand' -xa 'install'
-complete -c foo -n '__fish_seen_subcommand_from install' -s v -l verbose
-]], parser:get_fish_complete())
-      end)
+    completion)
+      _arguments -s -S \
+        {-h,--help}"[Show this help message and exit]" \
+        ": :(bash zsh fish)" \
+        && return 0
+      ;;
 
-      it("generates completions for help command argument", function()
-         local parser = Parser "foo"
-            :add_help(false)
-            :add_help_command {add_help = false}
-         parser:command "install"
-            :add_help(false)
-         assert.equal([[
-complete -c foo -n '__fish_use_subcommand' -xa 'help' -d 'Show help for commands'
-complete -c foo -n '__fish_seen_subcommand_from help' -xa 'help install'
-complete -c foo -n '__fish_use_subcommand' -xa 'install'
-]], parser:get_fish_complete())
-      end)
+    install|i)
+      _arguments -s -S \
+        {-h,--help}"[Show this help message and exit]" \
+        "--deps-mode: :(all one order none)" \
+        "--no-doc[Install without documentation]" \
+        "*--pair[A pair of files]: :_files" \
+        && return 0
+      ;;
 
-      it("uses fist sentence of descriptions", function()
-         local parser = Parser "foo"
-            :add_help(false)
-         parser:option "--bar"
-            :description "A description with a .period. Another sentence."
-         assert.equal([[
-complete -c foo -l bar -r -d 'A description with a .period'
-]], parser:get_fish_complete())
-      end)
+    admin)
+      _arguments -s -S \
+        {-h,--help}"[Show this help message and exit]" \
+        ": :_comptest_admin_cmds" \
+        "*:: :->args" \
+        && return 0
 
-      it("escapes backslashes and single quotes in descriptions", function()
-         local parser = Parser "foo"
-            :add_help(false)
-         parser:option "--bar"
-            :description "A description with illegal \\' characters."
-         assert.equal([[
-complete -c foo -l bar -r -d 'A description with illegal \\\' characters'
-]], parser:get_fish_complete())
-      end)
+      case $words[1] in
+        help)
+          _arguments -s -S \
+            {-h,--help}"[Show this help message and exit]" \
+            ": :(help add remove)" \
+            && return 0
+          ;;
+
+        add)
+          _arguments -s -S \
+            {-h,--help}"[Show this help message and exit]" \
+            ": :_files" \
+            && return 0
+          ;;
+
+        remove)
+          _arguments -s -S \
+            {-h,--help}"[Show this help message and exit]" \
+            ": :_files" \
+            && return 0
+          ;;
+
+      esac
+      ;;
+
+  esac
+
+  return 1
+}
+
+_comptest_cmds() {
+  local -a commands=(
+    "help:Show help for commands"
+    "completion:Output a shell completion script"
+    {install,i}":Install a rock"
+    "admin"
+  )
+  _describe "command" commands
+}
+
+_comptest_admin_cmds() {
+  local -a commands=(
+    "help:Show help for commands"
+    "add:Add a rock to a server"
+    "remove:Remove a rock from  a server"
+  )
+  _describe "command" commands
+}
+]=], get_output("completion zsh"))
+   end)
+
+   it("generates correct fish completion script", function()
+      assert.equal([=[
+
+complete -c comptest -n '__fish_use_subcommand' -xa 'help' -d 'Show help for commands'
+complete -c comptest -n '__fish_use_subcommand' -xa 'completion' -d 'Output a shell completion script'
+complete -c comptest -n '__fish_use_subcommand' -xa 'install' -d 'Install a rock'
+complete -c comptest -n '__fish_use_subcommand' -xa 'i' -d 'Install a rock'
+complete -c comptest -n '__fish_use_subcommand' -xa 'admin'
+complete -c comptest -s h -l help -d 'Show this help message and exit'
+complete -c comptest -s f -l files -r -d 'A description with illegal \\\' characters'
+complete -c comptest -l direction -xa 'north south east west' -d 'The direction to go in'
+
+complete -c comptest -n '__fish_seen_subcommand_from help' -xa 'help completion install i admin'
+complete -c comptest -n '__fish_seen_subcommand_from help' -s h -l help -d 'Show this help message and exit'
+
+complete -c comptest -n '__fish_seen_subcommand_from completion' -s h -l help -d 'Show this help message and exit'
+
+complete -c comptest -n '__fish_seen_subcommand_from install i' -s h -l help -d 'Show this help message and exit'
+complete -c comptest -n '__fish_seen_subcommand_from install i' -l deps-mode -xa 'all one order none'
+complete -c comptest -n '__fish_seen_subcommand_from install i' -l no-doc -d 'Install without documentation'
+complete -c comptest -n '__fish_seen_subcommand_from install i' -l pair -r -d 'A pair of files'
+
+complete -c comptest -n '__fish_use_subcommand' -xa 'help' -d 'Show help for commands'
+complete -c comptest -n '__fish_use_subcommand' -xa 'add' -d 'Add a rock to a server'
+complete -c comptest -n '__fish_use_subcommand' -xa 'remove' -d 'Remove a rock from  a server'
+complete -c comptest -n '__fish_seen_subcommand_from admin' -s h -l help -d 'Show this help message and exit'
+
+complete -c comptest -n '__fish_seen_subcommand_from help' -xa 'help add remove'
+complete -c comptest -n '__fish_seen_subcommand_from help' -s h -l help -d 'Show this help message and exit'
+
+complete -c comptest -n '__fish_seen_subcommand_from add' -s h -l help -d 'Show this help message and exit'
+
+complete -c comptest -n '__fish_seen_subcommand_from remove' -s h -l help -d 'Show this help message and exit'
+]=], get_output("completion fish"))
    end)
 end)
