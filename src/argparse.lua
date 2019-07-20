@@ -1411,6 +1411,8 @@ local function fish_escape(string)
 end
 
 function Parser:_fish_complete_help(buf, prefix)
+   table.insert(buf, "")
+
    for _, command in ipairs(self._commands) do
       for _, alias in ipairs(command._aliases) do
          local line = ("%s -n '__fish_use_subcommand' -xa '%s'"):format(prefix, alias)
@@ -1420,11 +1422,12 @@ function Parser:_fish_complete_help(buf, prefix)
          table.insert(buf, line)
       end
 
-      if command._is_help_command then
-         local line = ("%s -n '__fish_seen_subcommand_from %s' -xa '%s'")
-            :format(prefix, table.concat(command._aliases, " "), self:_get_commands())
-         table.insert(buf, line)
-      end
+   end
+
+   if self._is_help_command then
+      local line = ("%s -n '__fish_seen_subcommand_from %s' -xa '%s'")
+         :format(prefix, table.concat(self._aliases, " "), self._parent:_get_commands())
+      table.insert(buf, line)
    end
 
    for _, option in ipairs(self._options) do
