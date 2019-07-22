@@ -1088,8 +1088,8 @@ function Parser:_is_shell_safe()
    if self._name:find("[^%w_%-%+%.]") then
       return false
    end
-   for _, command in ipairs(self._commands) do
-      for _, alias in ipairs(command._aliases) do
+   if self._aliases then
+      for _, alias in ipairs(self._aliases) do
          if alias:find("[^%w_%-%+%.]") then
             return false
          end
@@ -1100,13 +1100,18 @@ function Parser:_is_shell_safe()
          if alias:find("[^%w_%-%+%.]") then
             return false
          end
-         if option._choices then
-            for _, choice in ipairs(option._choices) do
-               if choice:find("[%s'\"]") then
-                  return false
-               end
+      end
+      if option._choices then
+         for _, choice in ipairs(option._choices) do
+            if choice:find("[%s'\"]") then
+               return false
             end
          end
+      end
+   end
+   for _, command in ipairs(self._commands) do
+      if not command:_is_shell_safe() then
+         return false
       end
    end
    return true
@@ -1117,7 +1122,6 @@ function Parser:add_complete(value)
       assert(type(value) == "string" or type(value) == "table",
          ("bad argument #1 to 'add_complete' (string or table expected, got %s)"):format(type(value)))
    end
-   assert(self:_is_shell_safe())
 
    local complete = self:option()
       :description "Output a shell completion script for the specified shell."
@@ -1144,7 +1148,6 @@ function Parser:add_complete_command(value)
       assert(type(value) == "string" or type(value) == "table",
          ("bad argument #1 to 'add_complete_command' (string or table expected, got %s)"):format(type(value)))
    end
-   assert(self:_is_shell_safe())
 
    local complete = self:command()
       :description "Output a shell completion script."
@@ -1258,6 +1261,7 @@ function Parser:_bash_cmd_completions(buf)
 end
 
 function Parser:get_bash_complete()
+   assert(self:_is_shell_safe())
    local buf = {([[
 _%s() {
     local IFS=$' \t\n'
@@ -1387,6 +1391,7 @@ function Parser:_zsh_complete_help(buf, cmds_buf, cmd_name, indent)
 end
 
 function Parser:get_zsh_complete()
+   assert(self:_is_shell_safe())
    local buf = {("compdef _%s %s\n"):format(self._name, self._name)}
    local cmds_buf = {}
    table.insert(buf, "_" .. self._name .. "() {")
@@ -1464,6 +1469,7 @@ function Parser:_fish_complete_help(buf, prefix)
 end
 
 function Parser:get_fish_complete()
+   assert(self:_is_shell_safe())
    local buf = {}
    local prefix = "complete -c " .. self._name
    self:_fish_complete_help(buf, prefix)
