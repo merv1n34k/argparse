@@ -2,7 +2,7 @@
 
 local argparse = require "argparse"
 
-local parser = argparse "comptest"
+local parser = argparse()
    :add_help_command()
    :add_complete_command()
 

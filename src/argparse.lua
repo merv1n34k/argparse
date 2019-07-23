@@ -1085,10 +1085,11 @@ function Parser:add_help_command(value)
 end
 
 function Parser:_is_shell_safe()
-   if self._name:find("[^%w_%-%+%.]") then
-      return false
-   end
-   if self._aliases then
+   if self._basename then
+      if self._basename:find("[^%w_%-%+%.]") then
+         return false
+      end
+   else
       for _, alias in ipairs(self._aliases) do
          if alias:find("[^%w_%-%+%.]") then
             return false
@@ -1168,6 +1169,10 @@ function Parser:add_complete_command(value)
    end
 
    return self
+end
+
+local function base_name(pathname)
+   return pathname:gsub("[/\\]*$", ""):match(".*[/\\]([^/\\]*)") or pathname
 end
 
 local function get_short_description(element)
@@ -1251,7 +1256,7 @@ function Parser:_bash_cmd_completions(buf)
    end
 
    table.insert(buf, (" "):rep(4) .. 'case "$cmd" in')
-   table.insert(buf, (" "):rep(8) .. self._name .. ")")
+   table.insert(buf, (" "):rep(8) .. self._basename .. ")")
    table.insert(buf, (" "):rep(12) .. 'COMPREPLY=($(compgen -W "' .. self:_get_commands() .. '" -- "$cur"))')
    table.insert(buf, (" "):rep(12) .. ";;")
    if #subcmds > 0 then
@@ -1261,6 +1266,7 @@ function Parser:_bash_cmd_completions(buf)
 end
 
 function Parser:get_bash_complete()
+   self._basename = base_name(self._name)
    assert(self:_is_shell_safe())
    local buf = {([[
 _%s() {
@@ -1270,7 +1276,7 @@ _%s() {
     prev="${COMP_WORDS[COMP_CWORD-1]}"
     cmd="%s"
     opts="%s"
-]]):format(self._name, self._name, self:_get_options())}
+]]):format(self._basename, self._basename, self:_get_options())}
 
    self:_bash_option_args(buf, 4)
    self:_bash_get_cmd(buf)
@@ -1285,7 +1291,7 @@ _%s() {
 }
 
 complete -F _%s -o bashdefault -o default %s
-]=]):format(self._name, self._name))
+]=]):format(self._basename, self._basename))
 
    return table.concat(buf, "\n")
 end
@@ -1391,16 +1397,17 @@ function Parser:_zsh_complete_help(buf, cmds_buf, cmd_name, indent)
 end
 
 function Parser:get_zsh_complete()
+   self._basename = base_name(self._name)
    assert(self:_is_shell_safe())
-   local buf = {("compdef _%s %s\n"):format(self._name, self._name)}
+   local buf = {("compdef _%s %s\n"):format(self._basename, self._basename)}
    local cmds_buf = {}
-   table.insert(buf, "_" .. self._name .. "() {")
+   table.insert(buf, "_" .. self._basename .. "() {")
    if #self._commands > 0 then
       table.insert(buf, "  local context state state_descr line")
       table.insert(buf, "  typeset -A opt_args\n")
    end
-   self:_zsh_arguments(buf, self._name, 2)
-   self:_zsh_complete_help(buf, cmds_buf, self._name, 2)
+   self:_zsh_arguments(buf, self._basename, 2)
+   self:_zsh_complete_help(buf, cmds_buf, self._basename, 2)
    table.insert(buf, "\n  return 1")
    table.insert(buf, "}")
 
@@ -1469,9 +1476,10 @@ function Parser:_fish_complete_help(buf, prefix)
 end
 
 function Parser:get_fish_complete()
+   self._basename = base_name(self._name)
    assert(self:_is_shell_safe())
    local buf = {}
-   local prefix = "complete -c " .. self._name
+   local prefix = "complete -c " .. self._basename
    self:_fish_complete_help(buf, prefix)
    return table.concat(buf, "\n") .. "\n"
 end
