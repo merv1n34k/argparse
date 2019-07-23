@@ -5,14 +5,15 @@ local argparse = require "argparse"
 local parser = argparse()
    :add_help_command()
    :add_complete_command()
+   :add_complete()
+
+parser:flag "-v --verbose"
+   :description "Set the verbosity level."
+   :count "*"
 
 parser:option "-f --files"
    :description "A description with illegal \\' characters."
    :args "+"
-
-parser:option "--direction"
-   :description "The direction to go in."
-   :choices {"north", "south", "east", "west"}
 
 local install = parser:command "install i"
    :description "Install a rock."
@@ -23,12 +24,8 @@ install:option "--deps-mode"
 install:flag "--no-doc"
    :description "Install without documentation."
 
-install:option "--pair"
-   :description "A pair of files."
-   :args "2"
-   :count "*"
-
 local admin = parser:command "admin"
+   :description "Rock server administration interface."
    :add_help_command()
 
 local admin_add = admin:command "add"

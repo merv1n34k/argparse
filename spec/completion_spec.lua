@@ -23,15 +23,15 @@ _comptest() {
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
     cmd="comptest"
-    opts="-h --help -f --files --direction"
+    opts="-h --help --completion -v --verbose -f --files"
 
     case "$prev" in
-        -f|--files)
-            COMPREPLY=($(compgen -f "$cur"))
+        --completion)
+            COMPREPLY=($(compgen -W "bash zsh fish" -- "$cur"))
             return 0
             ;;
-        --direction)
-            COMPREPLY=($(compgen -W "north south east west" -- "$cur"))
+        -f|--files)
+            COMPREPLY=($(compgen -f "$cur"))
             return 0
             ;;
     esac
@@ -66,13 +66,9 @@ _comptest() {
                     COMPREPLY=($(compgen -W "all one order none" -- "$cur"))
                     return 0
                     ;;
-                --pair)
-                    COMPREPLY=($(compgen -f "$cur"))
-                    return 0
-                    ;;
             esac
 
-            opts="$opts -h --help --deps-mode --no-doc --pair"
+            opts="$opts -h --help --deps-mode --no-doc"
             ;;
         admin)
             opts="$opts -h --help"
@@ -98,8 +94,9 @@ _comptest() {
 
   _arguments -s -S \
     {-h,--help}"[Show this help message and exit]" \
+    "--completion[Output a shell completion script for the specified shell]: :(bash zsh fish)" \
+    "*"{-v,--verbose}"[Set the verbosity level]" \
     {-f,--files}"[A description with illegal \' characters]:*: :_files" \
-    "--direction[The direction to go in]: :(north south east west)" \
     ": :_comptest_cmds" \
     "*:: :->args" \
     && return 0
@@ -124,7 +121,6 @@ _comptest() {
         {-h,--help}"[Show this help message and exit]" \
         "--deps-mode: :(all one order none)" \
         "--no-doc[Install without documentation]" \
-        "*--pair[A pair of files]: :_files" \
         && return 0
       ;;
 
@@ -170,7 +166,7 @@ _comptest_cmds() {
     "help:Show help for commands"
     "completion:Output a shell completion script"
     {install,i}":Install a rock"
-    "admin"
+    "admin:Rock server administration interface"
   )
   _describe "command" commands
 }
@@ -193,10 +189,11 @@ complete -c comptest -n '__fish_use_subcommand' -xa 'help' -d 'Show help for com
 complete -c comptest -n '__fish_use_subcommand' -xa 'completion' -d 'Output a shell completion script'
 complete -c comptest -n '__fish_use_subcommand' -xa 'install' -d 'Install a rock'
 complete -c comptest -n '__fish_use_subcommand' -xa 'i' -d 'Install a rock'
-complete -c comptest -n '__fish_use_subcommand' -xa 'admin'
+complete -c comptest -n '__fish_use_subcommand' -xa 'admin' -d 'Rock server administration interface'
 complete -c comptest -s h -l help -d 'Show this help message and exit'
+complete -c comptest -l completion -xa 'bash zsh fish' -d 'Output a shell completion script for the specified shell'
+complete -c comptest -s v -l verbose -d 'Set the verbosity level'
 complete -c comptest -s f -l files -r -d 'A description with illegal \\\' characters'
-complete -c comptest -l direction -xa 'north south east west' -d 'The direction to go in'
 
 complete -c comptest -n '__fish_seen_subcommand_from help' -xa 'help completion install i admin'
 complete -c comptest -n '__fish_seen_subcommand_from help' -s h -l help -d 'Show this help message and exit'
@@ -206,7 +203,6 @@ complete -c comptest -n '__fish_seen_subcommand_from completion' -s h -l help -d
 complete -c comptest -n '__fish_seen_subcommand_from install i' -s h -l help -d 'Show this help message and exit'
 complete -c comptest -n '__fish_seen_subcommand_from install i' -l deps-mode -xa 'all one order none'
 complete -c comptest -n '__fish_seen_subcommand_from install i' -l no-doc -d 'Install without documentation'
-complete -c comptest -n '__fish_seen_subcommand_from install i' -l pair -r -d 'A pair of files'
 
 complete -c comptest -n '__fish_use_subcommand' -xa 'help' -d 'Show help for commands'
 complete -c comptest -n '__fish_use_subcommand' -xa 'add' -d 'Add a rock to a server'
