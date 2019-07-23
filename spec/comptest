@@ -12,7 +12,7 @@ parser:flag "-v --verbose"
    :count "*"
 
 parser:option "-f --files"
-   :description "A description with illegal \\' characters."
+   :description "A description with illegal \"' characters."
    :args "+"
 
 local install = parser:command "install i"

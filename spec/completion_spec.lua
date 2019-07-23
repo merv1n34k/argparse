@@ -96,7 +96,7 @@ _comptest() {
     {-h,--help}"[Show this help message and exit]" \
     "--completion[Output a shell completion script for the specified shell]: :(bash zsh fish)" \
     "*"{-v,--verbose}"[Set the verbosity level]" \
-    {-f,--files}"[A description with illegal \' characters]:*: :_files" \
+    {-f,--files}"[A description with illegal \"' characters]:*: :_files" \
     ": :_comptest_cmds" \
     "*:: :->args" \
     && return 0
@@ -193,7 +193,7 @@ complete -c comptest -n '__fish_use_subcommand' -xa 'admin' -d 'Rock server admi
 complete -c comptest -s h -l help -d 'Show this help message and exit'
 complete -c comptest -l completion -xa 'bash zsh fish' -d 'Output a shell completion script for the specified shell'
 complete -c comptest -s v -l verbose -d 'Set the verbosity level'
-complete -c comptest -s f -l files -r -d 'A description with illegal \\\' characters'
+complete -c comptest -s f -l files -r -d 'A description with illegal "\' characters'
 
 complete -c comptest -n '__fish_seen_subcommand_from help' -xa 'help completion install i admin'
 complete -c comptest -n '__fish_seen_subcommand_from help' -s h -l help -d 'Show this help message and exit'

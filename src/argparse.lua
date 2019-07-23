@@ -1110,6 +1110,15 @@ function Parser:_is_shell_safe()
          end
       end
    end
+   for _, argument in ipairs(self._arguments) do
+      if argument._choices then
+         for _, choice in ipairs(argument._choices) do
+            if choice:find("[%s'\"]") then
+               return false
+            end
+         end
+      end
+   end
    for _, command in ipairs(self._commands) do
       if not command:_is_shell_safe() then
          return false
@@ -1314,7 +1323,8 @@ function Parser:_zsh_arguments(buf, cmd_name, indent)
          table.insert(line, option._name)
       end
       if option._description then
-         table.insert(line, "[" .. get_short_description(option) .. "]")
+         local description = get_short_description(option):gsub('["%]:]', "\\%0")
+         table.insert(line, "[" .. description .. "]")
       end
       if option._maxargs == math.huge then
          table.insert(line, ":*")
@@ -1369,7 +1379,7 @@ function Parser:_zsh_cmds(buf, cmd_name)
          table.insert(line, '"' .. command._name)
       end
       if command._description then
-         table.insert(line, ":" .. get_short_description(command))
+         table.insert(line, ":" .. get_short_description(command):gsub('["]', "\\%0"))
       end
       table.insert(buf, "    " .. table.concat(line) .. '"')
    end
