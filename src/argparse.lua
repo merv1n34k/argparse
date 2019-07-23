@@ -1224,7 +1224,7 @@ function Parser:_bash_get_cmd(buf)
    for _, command in ipairs(self._commands) do
       if not command._is_help_command then
          table.insert(cmds, (" "):rep(12) .. table.concat(command._aliases, "|") .. ")")
-         table.insert(cmds, (" "):rep(16) .. 'cmd="' .. command._aliases[1] .. '"')
+         table.insert(cmds, (" "):rep(16) .. 'cmd="' .. command._name .. '"')
          table.insert(cmds, (" "):rep(16) .. "break")
          table.insert(cmds, (" "):rep(16) .. ";;")
       end
@@ -1243,7 +1243,7 @@ function Parser:_bash_cmd_completions(buf)
    local subcmds = {}
    for _, command in ipairs(self._commands) do
       if #command._options > 0 and not command._is_help_command then
-         table.insert(subcmds, (" "):rep(8) .. command._aliases[1] .. ")")
+         table.insert(subcmds, (" "):rep(8) .. command._name .. ")")
          command:_bash_option_args(subcmds, 12)
          table.insert(subcmds, (" "):rep(12) .. 'opts="$opts ' .. command:_get_options() .. '"')
          table.insert(subcmds, (" "):rep(12) .. ";;")
@@ -1305,7 +1305,7 @@ function Parser:_zsh_arguments(buf, cmd_name, indent)
          if option._maxcount > 1 then
             table.insert(line, "*")
          end
-         table.insert(line, option._aliases[1])
+         table.insert(line, option._name)
       end
       if option._description then
          table.insert(line, "[" .. get_short_description(option) .. "]")
@@ -1360,7 +1360,7 @@ function Parser:_zsh_cmds(buf, cmd_name)
       if #command._aliases > 1 then
          table.insert(line, "{" .. table.concat(command._aliases, ",") .. '}"')
       else
-         table.insert(line, '"' .. command._aliases[1])
+         table.insert(line, '"' .. command._name)
       end
       if command._description then
          table.insert(line, ":" .. get_short_description(command))
@@ -1380,7 +1380,7 @@ function Parser:_zsh_complete_help(buf, cmds_buf, cmd_name, indent)
    table.insert(buf, "\n" .. (" "):rep(indent) .. "case $words[1] in")
 
    for _, command in ipairs(self._commands) do
-      local name = cmd_name .. "_" .. command._aliases[1]
+      local name = cmd_name .. "_" .. command._name
       table.insert(buf, (" "):rep(indent + 2) .. table.concat(command._aliases, "|") .. ")")
       command:_zsh_arguments(buf, name, indent + 4)
       command:_zsh_complete_help(buf, cmds_buf, name, indent + 4)
