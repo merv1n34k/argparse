@@ -86,7 +86,7 @@ complete -F _comptest -o bashdefault -o default comptest
 
    it("generates correct zsh completion script", function()
       assert.equal([=[
-compdef _comptest comptest
+#compdef comptest
 
 _comptest() {
   local context state state_descr line
@@ -179,6 +179,8 @@ _comptest_admin_cmds() {
   )
   _describe "command" commands
 }
+
+_comptest
 ]=], get_output("completion zsh"))
    end)
 

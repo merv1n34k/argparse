@@ -1409,7 +1409,7 @@ end
 function Parser:get_zsh_complete()
    self._basename = base_name(self._name)
    assert(self:_is_shell_safe())
-   local buf = {("compdef _%s %s\n"):format(self._basename, self._basename)}
+   local buf = {("#compdef %s\n"):format(self._basename)}
    local cmds_buf = {}
    table.insert(buf, "_" .. self._basename .. "() {")
    if #self._commands > 0 then
@@ -1425,7 +1425,7 @@ function Parser:get_zsh_complete()
    if #cmds_buf > 0 then
       result = result .. "\n" .. table.concat(cmds_buf, "\n")
    end
-   return result .. "\n"
+   return result .. "\n\n_" .. self._basename .. "\n"
 end
 
 local function fish_escape(string)
