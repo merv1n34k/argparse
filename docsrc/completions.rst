@@ -1,7 +1,9 @@
 Shell completions
 =================
 
-Argparse supports generating shell completion scripts for Bash, Zsh, and Fish.
+Argparse can generate shell completion scripts for
+`Bash <https://www.gnu.org/software/bash/>`_, `Zsh <https://www.zsh.org/>`_, and
+`Fish <https://fishshell.com/>`_.
 The completion scripts support completing options, commands, and argument
 choices.
 
@@ -11,9 +13,9 @@ The Parser methods ``:get_bash_complete()``, ``get_zsh_complete()``, and
 Adding a completion option or command
 -------------------------------------
 
-A ``--completion`` option can be added to the parser using the
+A ``--completion`` option can be added to a parser using the
 ``:add_complete([value])`` method. The optional ``value`` argument is a string
-or table used to configure the option.
+or table used to configure the option (by calling the option with ``value``).
 
 .. code-block:: lua
    :linenos:
@@ -34,18 +36,20 @@ or table used to configure the option.
       --completion {bash,zsh,fish}
                             Output a shell completion script for the specified shell.
 
-A similar ``completion`` command can be added to the parser using the
+A similar ``completion`` command can be added to a parser using the
 ``:add_complete_command([value])`` method.
 
-Activating completions
-----------------------
+Using completions
+-----------------
 
 Bash
 ^^^^
 
 Save the generated completion script at
-``~/.local/share/bash-completion/completions/script.lua`` or add the following
-line to the ``~/.bashrc``:
+``/usr/share/bash-completion/completions/script.lua`` or
+``~/.local/share/bash-completion/completions/script.lua``.
+
+Alternatively, add the following line to the ``~/.bashrc``:
 
 .. code-block:: bash
 
@@ -54,20 +58,20 @@ line to the ``~/.bashrc``:
 Zsh
 ^^^
 
-The completion script should be placed in a directory in the ``$fpath``.  A new
-directory can be added to to the ``$fpath`` by adding e.g.
-``fpath=(~/.zfunc $fpath)`` in the ``~/.zshrc`` before ``compinit``. Save the
-completion script with:
-
-.. code-block:: none
-
-   $ script.lua --completion zsh > ~/.zfunc/_script.lua
+Save the completion script in the ``/usr/share/zsh/site-functions/`` directory
+or any directory in the ``$fpath``. The file name should be an underscore
+followed by the program name. A new directory can be added to to the ``$fpath``
+by adding e.g. ``fpath=(~/.zfunc $fpath)`` in the ``~/.zshrc`` before
+``compinit``.
 
 Fish
 ^^^^
 
-Save the completion script at ``~/.config/fish/completions/script.lua.fish`` or
-add the following line to the file ``~/.config/fish/config.fish``:
+Save the completion script at
+``/usr/share/fish/vendor_completions.d/script.lua.fish`` or
+``~/.config/fish/completions/script.lua.fish``.
+
+Alternatively, add the following line to the file ``~/.config/fish/config.fish``:
 
 .. code-block:: fish
 
