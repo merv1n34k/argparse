@@ -92,63 +92,94 @@ _comptest() {
   local context state state_descr line
   typeset -A opt_args
 
+  local -a options=(
+    {-h,--help}"[Show this help message and exit]"
+    "--completion[Output a shell completion script for the specified shell]: :(bash zsh fish)"
+    "*"{-v,--verbose}"[Set the verbosity level]"
+    {-f,--files}"[A description with illegal \"' characters]:*: :_files"
+  )
   _arguments -s -S \
-    {-h,--help}"[Show this help message and exit]" \
-    "--completion[Output a shell completion script for the specified shell]: :(bash zsh fish)" \
-    "*"{-v,--verbose}"[Set the verbosity level]" \
-    {-f,--files}"[A description with illegal \"' characters]:*: :_files" \
+    $options \
     ": :_comptest_cmds" \
     "*:: :->args" \
     && return 0
 
   case $words[1] in
     help)
+      options=(
+        $options
+        {-h,--help}"[Show this help message and exit]"
+      )
       _arguments -s -S \
-        {-h,--help}"[Show this help message and exit]" \
+        $options \
         ": :(help completion install i admin)" \
         && return 0
       ;;
 
     completion)
+      options=(
+        $options
+        {-h,--help}"[Show this help message and exit]"
+      )
       _arguments -s -S \
-        {-h,--help}"[Show this help message and exit]" \
+        $options \
         ": :(bash zsh fish)" \
         && return 0
       ;;
 
     install|i)
+      options=(
+        $options
+        {-h,--help}"[Show this help message and exit]"
+        "--deps-mode: :(all one order none)"
+        "--no-doc[Install without documentation]"
+      )
       _arguments -s -S \
-        {-h,--help}"[Show this help message and exit]" \
-        "--deps-mode: :(all one order none)" \
-        "--no-doc[Install without documentation]" \
+        $options \
         && return 0
       ;;
 
     admin)
+      options=(
+        $options
+        {-h,--help}"[Show this help message and exit]"
+      )
       _arguments -s -S \
-        {-h,--help}"[Show this help message and exit]" \
+        $options \
         ": :_comptest_admin_cmds" \
         "*:: :->args" \
         && return 0
 
       case $words[1] in
         help)
+          options=(
+            $options
+            {-h,--help}"[Show this help message and exit]"
+          )
           _arguments -s -S \
-            {-h,--help}"[Show this help message and exit]" \
+            $options \
             ": :(help add remove)" \
             && return 0
           ;;
 
         add)
+          options=(
+            $options
+            {-h,--help}"[Show this help message and exit]"
+          )
           _arguments -s -S \
-            {-h,--help}"[Show this help message and exit]" \
+            $options \
             ": :_files" \
             && return 0
           ;;
 
         remove)
+          options=(
+            $options
+            {-h,--help}"[Show this help message and exit]"
+          )
           _arguments -s -S \
-            {-h,--help}"[Show this help message and exit]" \
+            $options \
             ": :_files" \
             && return 0
           ;;

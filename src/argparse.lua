@@ -1306,7 +1306,12 @@ complete -F _%s -o bashdefault -o default %s
 end
 
 function Parser:_zsh_arguments(buf, cmd_name, indent)
-   table.insert(buf, (" "):rep(indent) .. "_arguments -s -S \\")
+   if self._parent then
+      table.insert(buf, (" "):rep(indent) .. "options=(")
+      table.insert(buf, (" "):rep(indent + 2) .. "$options")
+   else
+      table.insert(buf, (" "):rep(indent) .. "local -a options=(")
+   end
 
    for _, option in ipairs(self._options) do
       local line = {}
@@ -1335,9 +1340,12 @@ function Parser:_zsh_arguments(buf, cmd_name, indent)
          table.insert(line, ": :_files")
       end
       table.insert(line, '"')
-
-      table.insert(buf, (" "):rep(indent + 2) .. table.concat(line) .. " \\")
+      table.insert(buf, (" "):rep(indent + 2) .. table.concat(line))
    end
+
+   table.insert(buf, (" "):rep(indent) .. ")")
+   table.insert(buf, (" "):rep(indent) .. "_arguments -s -S \\")
+   table.insert(buf, (" "):rep(indent + 2) .. "$options \\")
 
    if self._is_help_command then
       table.insert(buf, (" "):rep(indent + 2) .. '": :(' .. self._parent:_get_commands() .. ')" \\')
