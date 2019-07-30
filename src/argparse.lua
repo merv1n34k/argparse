@@ -1218,7 +1218,7 @@ function Parser:_bash_option_args(buf, indent)
          if option._choices then
             compreply = 'COMPREPLY=($(compgen -W "' .. table.concat(option._choices, " ") .. '" -- "$cur"))'
          else
-            compreply = 'COMPREPLY=($(compgen -f "$cur"))'
+            compreply = 'COMPREPLY=($(compgen -f -- "$cur"))'
          end
          table.insert(opts, (" "):rep(indent + 4) .. table.concat(option._aliases, "|") .. ")")
          table.insert(opts, (" "):rep(indent + 8) .. compreply)

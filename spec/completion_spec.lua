@@ -31,7 +31,7 @@ _comptest() {
             return 0
             ;;
         -f|--files)
-            COMPREPLY=($(compgen -f "$cur"))
+            COMPREPLY=($(compgen -f -- "$cur"))
             return 0
             ;;
     esac
