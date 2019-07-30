@@ -1329,7 +1329,7 @@ function Parser:_zsh_arguments(buf, cmd_name, indent)
          table.insert(line, option._name)
       end
       if option._description then
-         local description = get_short_description(option):gsub('["%]:]', "\\%0")
+         local description = get_short_description(option):gsub('["%]:`$]', "\\%0")
          table.insert(line, "[" .. description .. "]")
       end
       if option._maxargs == math.huge then
@@ -1388,7 +1388,7 @@ function Parser:_zsh_cmds(buf, cmd_name)
          table.insert(line, '"' .. command._name)
       end
       if command._description then
-         table.insert(line, ":" .. get_short_description(command):gsub('["]', "\\%0"))
+         table.insert(line, ":" .. get_short_description(command):gsub('["`$]', "\\%0"))
       end
       table.insert(buf, "    " .. table.concat(line) .. '"')
    end
