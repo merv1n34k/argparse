@@ -19,10 +19,10 @@ describe("tests related to generation of shell completion scripts", function()
       assert.equal([=[
 _comptest() {
     local IFS=$' \t\n'
-    local cur prev cmd opts arg
+    local args cur prev cmd opts arg
+    args=("${COMP_WORDS[@]}")
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
-    cmd="comptest"
     opts="-h --help --completion -v --verbose -f --files"
 
     case "$prev" in
@@ -36,31 +36,60 @@ _comptest() {
             ;;
     esac
 
-    for arg in ${COMP_WORDS[@]:1}; do
+    args=("${args[@]:1}")
+    for arg in "${args[@]}"; do
         case "$arg" in
+            help)
+                cmd="help"
+                opts="$opts -h --help"
+                break
+                ;;
             completion)
                 cmd="completion"
+                opts="$opts -h --help"
                 break
                 ;;
             install|i)
                 cmd="install"
+                opts="$opts -h --help --deps-mode --no-doc"
                 break
                 ;;
             admin)
                 cmd="admin"
+                opts="$opts -h --help"
+                args=("${args[@]:1}")
+                for arg in "${args[@]}"; do
+                    case "$arg" in
+                        help)
+                            cmd="$cmd help"
+                            opts="$opts -h --help"
+                            break
+                            ;;
+                        add)
+                            cmd="$cmd add"
+                            opts="$opts -h --help"
+                            break
+                            ;;
+                        remove)
+                            cmd="$cmd remove"
+                            opts="$opts -h --help"
+                            break
+                            ;;
+                    esac
+                done
                 break
                 ;;
         esac
     done
 
     case "$cmd" in
-        comptest)
+        '')
             COMPREPLY=($(compgen -W "help completion install i admin" -- "$cur"))
             ;;
-        completion)
-            opts="$opts -h --help"
+        'help')
+            COMPREPLY=($(compgen -W "help completion install i admin" -- "$cur"))
             ;;
-        install)
+        'install')
             case "$prev" in
                 --deps-mode)
                     COMPREPLY=($(compgen -W "all one order none" -- "$cur"))
@@ -68,10 +97,12 @@ _comptest() {
                     ;;
             esac
 
-            opts="$opts -h --help --deps-mode --no-doc"
             ;;
-        admin)
-            opts="$opts -h --help"
+        'admin')
+            COMPREPLY=($(compgen -W "help add remove" -- "$cur"))
+            ;;
+        'admin help')
+            COMPREPLY=($(compgen -W "help add remove" -- "$cur"))
             ;;
     esac
 

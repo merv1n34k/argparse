@@ -586,6 +586,9 @@ end
 
 function Parser:_get_fullname(exclude_root)
    local parent = self._parent
+   if exclude_root and not parent then
+      return ""
+   end
    local buf = {self._name}
 
    while parent do
@@ -1236,45 +1239,51 @@ function Parser:_bash_option_args(buf, indent)
    end
 end
 
-function Parser:_bash_get_cmd(buf)
-   local cmds = {}
-   for _, command in ipairs(self._commands) do
-      if not command._is_help_command then
-         table.insert(cmds, (" "):rep(12) .. table.concat(command._aliases, "|") .. ")")
-         table.insert(cmds, (" "):rep(16) .. 'cmd="' .. command._name .. '"')
-         table.insert(cmds, (" "):rep(16) .. "break")
-         table.insert(cmds, (" "):rep(16) .. ";;")
-      end
+function Parser:_bash_get_cmd(buf, indent)
+   if #self._commands == 0 then
+      return
    end
 
-   if #cmds > 0 then
-      table.insert(buf, (" "):rep(4) .. "for arg in ${COMP_WORDS[@]:1}; do")
-      table.insert(buf, (" "):rep(8) .. 'case "$arg" in')
-      table.insert(buf, table.concat(cmds, "\n"))
-      table.insert(buf, (" "):rep(8) .. "esac")
-      table.insert(buf, (" "):rep(4) .. "done\n")
+   table.insert(buf, (" "):rep(indent) .. 'args=("${args[@]:1}")')
+   table.insert(buf, (" "):rep(indent) .. 'for arg in "${args[@]}"; do')
+   table.insert(buf, (" "):rep(indent + 4) .. 'case "$arg" in')
+
+   for _, command in ipairs(self._commands) do
+      table.insert(buf, (" "):rep(indent + 8) .. table.concat(command._aliases, "|") .. ")")
+      if self._parent then
+         table.insert(buf, (" "):rep(indent + 12) .. 'cmd="$cmd ' .. command._name .. '"')
+      else
+         table.insert(buf, (" "):rep(indent + 12) .. 'cmd="' .. command._name .. '"')
+      end
+      table.insert(buf, (" "):rep(indent + 12) .. 'opts="$opts ' .. command:_get_options() .. '"')
+      command:_bash_get_cmd(buf, indent + 12)
+      table.insert(buf, (" "):rep(indent + 12) .. "break")
+      table.insert(buf, (" "):rep(indent + 12) .. ";;")
    end
+
+   table.insert(buf, (" "):rep(indent + 4) .. "esac")
+   table.insert(buf, (" "):rep(indent) .. "done")
 end
 
 function Parser:_bash_cmd_completions(buf)
-   local subcmds = {}
-   for _, command in ipairs(self._commands) do
-      if #command._options > 0 and not command._is_help_command then
-         table.insert(subcmds, (" "):rep(8) .. command._name .. ")")
-         command:_bash_option_args(subcmds, 12)
-         table.insert(subcmds, (" "):rep(12) .. 'opts="$opts ' .. command:_get_options() .. '"')
-         table.insert(subcmds, (" "):rep(12) .. ";;")
-      end
+   local cmd_buf = {}
+   if self._parent then
+      self:_bash_option_args(cmd_buf, 12)
+   end
+   if #self._commands > 0 then
+      table.insert(cmd_buf, (" "):rep(12) .. 'COMPREPLY=($(compgen -W "' .. self:_get_commands() .. '" -- "$cur"))')
+   elseif self._is_help_command then
+      table.insert(cmd_buf, (" "):rep(12) .. 'COMPREPLY=($(compgen -W "' .. self._parent:_get_commands() .. '" -- "$cur"))')
+   end
+   if #cmd_buf > 0 then
+      table.insert(buf, (" "):rep(8) .. "'" .. self:_get_fullname(true) .. "')")
+      table.insert(buf, table.concat(cmd_buf, "\n"))
+      table.insert(buf, (" "):rep(12) .. ";;")
    end
 
-   table.insert(buf, (" "):rep(4) .. 'case "$cmd" in')
-   table.insert(buf, (" "):rep(8) .. self._basename .. ")")
-   table.insert(buf, (" "):rep(12) .. 'COMPREPLY=($(compgen -W "' .. self:_get_commands() .. '" -- "$cur"))')
-   table.insert(buf, (" "):rep(12) .. ";;")
-   if #subcmds > 0 then
-      table.insert(buf, table.concat(subcmds, "\n"))
+   for _, command in ipairs(self._commands) do
+      command:_bash_cmd_completions(buf)
    end
-   table.insert(buf, (" "):rep(4) .. "esac\n")
 end
 
 function Parser:get_bash_complete()
@@ -1283,17 +1292,20 @@ function Parser:get_bash_complete()
    local buf = {([[
 _%s() {
     local IFS=$' \t\n'
-    local cur prev cmd opts arg
+    local args cur prev cmd opts arg
+    args=("${COMP_WORDS[@]}")
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
-    cmd="%s"
     opts="%s"
-]]):format(self._basename, self._basename, self:_get_options())}
+]]):format(self._basename, self:_get_options())}
 
    self:_bash_option_args(buf, 4)
-   self:_bash_get_cmd(buf)
+   self:_bash_get_cmd(buf, 4)
    if #self._commands > 0 then
+      table.insert(buf, "")
+      table.insert(buf, (" "):rep(4) .. 'case "$cmd" in')
       self:_bash_cmd_completions(buf)
+      table.insert(buf, (" "):rep(4) .. "esac\n")
    end
 
    table.insert(buf, ([=[
