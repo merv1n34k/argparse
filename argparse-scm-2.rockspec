@@ -1,12 +1,12 @@
 package = "argparse"
-version = "scm-1"
+version = "scm-2"
 source = {
-   url = "git+https://github.com/mpeterv/argparse.git"
+   url = "git+https://github.com/luarocks/argparse.git"
 }
 description = {
    summary = "A feature-rich command-line argument parser",
    detailed = "Argparse supports positional arguments, options, flags, optional arguments, subcommands and more. Argparse automatically generates usage, help and error messages.",
-   homepage = "https://github.com/mpeterv/argparse",
+   homepage = "https://github.com/luarocks/argparse",
    license = "MIT"
 }
 dependencies = {
