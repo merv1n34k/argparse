@@ -1273,7 +1273,10 @@ function Parser:_bash_cmd_completions(buf)
    if #self._commands > 0 then
       table.insert(cmd_buf, (" "):rep(12) .. 'COMPREPLY=($(compgen -W "' .. self:_get_commands() .. '" -- "$cur"))')
    elseif self._is_help_command then
-      table.insert(cmd_buf, (" "):rep(12) .. 'COMPREPLY=($(compgen -W "' .. self._parent:_get_commands() .. '" -- "$cur"))')
+      table.insert(cmd_buf, (" "):rep(12)
+         .. 'COMPREPLY=($(compgen -W "'
+         .. self._parent:_get_commands()
+         .. '" -- "$cur"))')
    end
    if #cmd_buf > 0 then
       table.insert(buf, (" "):rep(8) .. "'" .. self:_get_fullname(true) .. "')")
