@@ -1,11 +1,35 @@
 # Changelog
 
+## 0.7.0 (2019-08-14)
+
+The repository has been moved to a [new location](https://github.com/luarocks/argparse).
+
+### New features
+
+* Added support for generating shell completion scripts for Bash, Zsh, and Fish
+  using the Parser methods `:get_bash_complete()`, `:get_zsh_complete()`, and
+  `:get_fish_complete()`. The Parser methods `:add_complete()` and
+  `:add_complete_command()` add a `--completion` option or `completion` command
+  to the parser.
+* Added `:add_help_command()` method to Parser and Command objects. The help
+  command shows help for the specified subcommand.
+* Added `choices` option and argument property for specifying a set of
+  acceptable values for the argument.
+* Added `summary` command property for specifying the description shown in the
+  parent parser's help message.
+
+### Improvements
+
+* The location of the help flag in usage and help messages is now determined by
+  when it is added to the parser, rather than always being the last option. By
+  default it is now the first option.
+
 ## 0.6.0 (2018-04-13)
 
 ### New features
 
-* An array of functions can now be as the value of `converter` property,
-  so that multi-argumnet options can use different conversion rules
+* An array of functions can now be used as the value of `converter` property,
+  so that multi-argument options can use different conversion rules
   for different arguments (#14).
 * Mutexes can now include positional arguments (#11).
 * Added `hidden` property for arguments, options and commands,

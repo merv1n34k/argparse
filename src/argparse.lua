@@ -2069,7 +2069,7 @@ end
 
 local argparse = {}
 
-argparse.version = "0.6.0"
+argparse.version = "0.7.0"
 
 setmetatable(argparse, {__call = function(_, ...)
    return Parser(default_cmdline[0]):add_help(true)(...)
