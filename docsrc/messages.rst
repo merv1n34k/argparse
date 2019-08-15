@@ -23,11 +23,11 @@ it is not included into help and usage messages, but otherwise works normally.
 
 .. code-block:: none
 
-   Usage: script.lua [--normal-option <normal_option>] [-h]
+   Usage: script.lua [-h] [--normal-option <normal_option>]
 
    Options:
-      --normal-option <normal_option>
       -h, --help            Show this help message and exit.
+      --normal-option <normal_option>
 
 .. code-block:: none
 
@@ -57,11 +57,11 @@ For options and arguments, ``argname`` property controls the placeholder for the
 
 .. code-block:: none
 
-   Usage: script.lua [-f <server>] [-h]
+   Usage: script.lua [-h] [-f <server>]
 
    Options:
-      -f <server>, --from <server>
       -h, --help            Show this help message and exit.
+      -f <server>, --from <server>
 
 ``argname`` can be an array of placeholders.
 
@@ -78,11 +78,11 @@ For options and arguments, ``argname`` property controls the placeholder for the
 
 .. code-block:: none
 
-   Usage: script.lua [--pair <key> <value>] [-h]
+   Usage: script.lua [-h] [--pair <key> <value>]
 
    Options:
-      --pair <key> <value>
       -h, --help            Show this help message and exit.
+      --pair <key> <value>
 
 Grouping elements
 -----------------
@@ -113,9 +113,9 @@ a named group with its own section in the help message. Elements outside any gro
 
 .. code-block:: none
 
-   Usage: script.lua [-v] [--use-colors] [--encoding <encoding>]
+   Usage: script.lua [-h] [-v] [--use-colors] [--encoding <encoding>]
           [--compression-level <compression_level>]
-          [--skip-broken-chunks] [--version] [-h]
+          [--skip-broken-chunks] [--version]
 
    Configuring output format:
       -v, --verbose
@@ -127,8 +127,8 @@ a named group with its own section in the help message. Elements outside any gro
       --skip-broken-chunks
 
    Other options:
-      --version
       -h, --help            Show this help message and exit.
+      --version
 
 Help message line wrapping
 --------------------------
@@ -167,9 +167,10 @@ and the continuation lines are aligned with the first word after the list item m
 
 .. code-block:: none
 
-   Usage: script.lua [-f <foo>] [-b <bar>] [-h]
+   Usage: script.lua [-h] [-f <foo>] [-b <bar>]
 
    Options:
+      -h, --help            Show this help message and exit.
          -f <foo>,          Lorem ipsum dolor sit amet, consectetur adipiscing
       --foo <foo>           elit, sed do eiusmod tempor incididunt ut labore et
                             dolore magna aliqua. Ut enim ad minim veniam, quis
@@ -188,7 +189,6 @@ and the continuation lines are aligned with the first word after the list item m
                               ullamco laboris nisi ut aliquip...
                             * Duis aute irure dolor in reprehenderit in voluptate
                               velit esse cillum dolore eu fugiat nulla pariatur.
-      -h, --help            Show this help message and exit.
 
 ``help_max_width`` property is inherited by commands.
 
@@ -221,8 +221,8 @@ Like ``help_max_width``, all of them are inherited by commands when set on the p
 
 .. code-block:: none
 
-   Usage: script.lua [--foo <foo>] [--bar <bar>]
-                  [--baz <baz>] [--qux <qux>] [-h]
+   Usage: script.lua [-h] [--foo <foo>] [--bar <bar>]
+                     [--baz <baz>] [--qux <qux>]
 
 Help message for a group of arguments, options, or commands is organized into two columns, with usage
 template on the left side and descriptions on the right side.
@@ -250,10 +250,12 @@ within a group (``0`` by default).
 
 .. code-block:: none
 
-   Usage: script.lua [--foo <foo>] [--bar <bar>] [--baz <baz>]
-          [--qux <qux>] [-h]
+   Usage: script.lua [-h] [--foo <foo>] [--bar <bar>] [--baz <baz>]
+          [--qux <qux>]
 
    Options:
+
+     -h, --help     Show this help message and exit.
 
      --foo <foo>    Set foo.
 
@@ -262,5 +264,3 @@ within a group (``0`` by default).
      --baz <baz>    Set baz.
 
      --qux <qux>    Set qux.
-
-     -h, --help     Show this help message and exit.

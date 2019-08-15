@@ -91,7 +91,7 @@ Commands have their own usage and help messages.
 
 .. code-block:: none
 
-   Usage: script.lua install [-f <from>] [-h] <rock>
+   Usage: script.lua install [-h] [-f <from>] <rock>
 
    Error: too few arguments
 
@@ -101,14 +101,14 @@ Commands have their own usage and help messages.
 
 .. code-block:: none
 
-   Usage: script.lua install [-f <from>] [-h] <rock>
+   Usage: script.lua install [-h] [-f <from>] <rock>
 
    Arguments:
       rock
 
    Options:
-      -f <from>, --from <from>
       -h, --help            Show this help message and exit.
+      -f <from>, --from <from>
 
 Making a command optional
 -------------------------

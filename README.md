@@ -64,7 +64,7 @@ $ lua script.lua foo bar
 ```
 
 ```
-Usage: script [-o <output>] [-I <include>] [-h] <input>
+Usage: script [-h] [-o <output>] [-I <include>] <input>
 
 Error: too many arguments
 ```
@@ -74,7 +74,7 @@ $ lua script.lua --help
 ```
 
 ```
-Usage: script [-o <output>] [-I <include>] [-h] <input>
+Usage: script [-h] [-o <output>] [-I <include>] <input>
 
 An example. 
 
@@ -82,11 +82,11 @@ Arguments:
    input                 Input file.
 
 Options: 
+   -h, --help            Show this help message and exit.
    -o <output>, --output <output>
                          Output file. (default: a.out)
    -I <include>, --include <include>
                          Include locations.
-   -h, --help            Show this help message and exit.
 ```
 
 ```bash
@@ -94,7 +94,7 @@ $ lua script.lua foo --outptu=bar
 ```
 
 ```
-Usage: script [-o <output>] [-I <include>] [-h] <input>
+Usage: script [-h] [-o <output>] [-I <include>] <input>
 
 Error: unknown option '--outptu'
 Did you mean '--output'?

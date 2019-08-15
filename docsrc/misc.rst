@@ -127,7 +127,7 @@ Set ``overwrite`` property to ``false`` to prohibit this behavior.
 
 .. code-block:: none
 
-   Usage: script.lua [-o <output>] [-h]
+   Usage: script.lua [-h] [-o <output>]
 
    Error: option '-o' must be used at most 1 time
 

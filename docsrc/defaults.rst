@@ -30,12 +30,12 @@ The existence of a default value is reflected in help message, unless ``show_def
 
 .. code-block:: none
 
-   Usage: script.lua [-o <output>] [-h]
+   Usage: script.lua [-h] [-o <output>]
 
    Options: 
+      -h, --help            Show this help message and exit.
       -o <output>, --output <output>
                             Output file. (default: a.out)
-      -h, --help            Show this help message and exit.
 
 Note that invocation without required arguments is still an error.
 
@@ -45,7 +45,7 @@ Note that invocation without required arguments is still an error.
 
 .. code-block:: none
 
-   Usage: script.lua [-o <output>] [-h]
+   Usage: script.lua [-h] [-o <output>]
 
    Error: too few arguments
 
@@ -76,12 +76,12 @@ Consider the difference:
 
 .. code-block:: none
 
-   Usage: script.lua [-o <o>] [-p [<p>]] [-h]
+   Usage: script.lua [-h] [-o <o>] [-p [<p>]]
 
    Options:
+      -h, --help            Show this help message and exit.
       -o <o>                default: a.out
       -p [<p>]              default: password
-      -h, --help            Show this help message and exit.
 
 .. code-block:: none
 
@@ -111,6 +111,6 @@ Consider the difference:
 
 .. code-block:: none
 
-   Usage: script.lua [-o <o>] [-p [<p>]] [-h]
+   Usage: script.lua [-h] [-o <o>] [-p [<p>]]
 
    Error: too few arguments

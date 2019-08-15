@@ -31,7 +31,7 @@ argparse can perform automatic validation and conversion on arguments. If ``conv
 
 .. code-block:: none
 
-   Usage: script.lua [-t <times>] [-h] <input>
+   Usage: script.lua [-h] [-t <times>] <input>
 
    Error: nonexistent.txt: No such file or directory
 
@@ -41,7 +41,7 @@ argparse can perform automatic validation and conversion on arguments. If ``conv
 
 .. code-block:: none
 
-   Usage: script.lua [-t <times>] [-h] <input>
+   Usage: script.lua [-h] [-t <times>] <input>
 
    Error: malformed argument 'many'
 
