@@ -44,7 +44,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'argparse'
-copyright = u'2013 - 2018, Peter Melnichenko'
+copyright = u'2013-2018 Peter Melnichenko; 2019 Paul Ouellette'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -116,7 +116,7 @@ if os.environ.get('READTHEDOCS', None) != 'True':
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
-html_title = "argparse 0.6.0 tutorial"
+html_title = "argparse 0.7.0 tutorial"
 
 # A shorter title for the navigation bar.  Default is the same as html_title.
 #html_short_title = None
@@ -233,7 +233,8 @@ latex_documents = [
 # (source start file, name, description, authors, manual section).
 man_pages = [
     ('index', 'argparse', u'argparse tutorial',
-     [u'Peter Melnichenko'], 1)
+     [u'Peter Melnichenko', u'Paul Ouellette'],
+     1)
 ]
 
 # If true, show URL addresses after external links.
@@ -247,7 +248,7 @@ man_pages = [
 #  dir menu entry, description, category)
 texinfo_documents = [
     ('index', 'argparse', u'argparse tutorial',
-     u'Peter Melnichenko', 'argparse', 'Command line parser for Lua.',
+     u'Peter Melnichenko, Paul Ouellette', 'argparse', 'Command line parser for Lua.',
      'Miscellaneous')
 ]
 
