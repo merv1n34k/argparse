@@ -39,6 +39,41 @@ it is not included into help and usage messages, but otherwise works normally.
       deprecated_option = "value"
    }
 
+Hiding option and command aliases
+---------------------------------
+
+Hidden aliases can be added to an option or command by setting the
+``hidden_name`` property. Its value is interpreted in the same way as the
+``name`` property.
+
+.. code-block:: lua
+   :linenos:
+
+   parser:option "--server"
+      :hidden_name "--from"
+
+.. code-block:: none
+
+   $ lua script.lua --help
+
+.. code-block:: none
+
+   Usage: script.lua [-h] [--server <server>]
+
+   Options:
+      -h, --help            Show this help message and exit.
+      --server <server>
+
+.. code-block:: none
+
+   $ lua script.lua --server foo
+   $ lua script.lua --from foo
+
+.. code-block:: lua
+
+   {
+      server = "foo"
+   }
 
 Setting argument placeholder
 ----------------------------

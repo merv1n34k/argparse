@@ -200,6 +200,7 @@ Other properties:
 =========================== ==========================
 Property                    Type
 =========================== ==========================
+``hidden_name``             String
 ``summary``                 String
 ``target``                  String
 ``usage``                   String
@@ -269,6 +270,7 @@ Other properties:
 =================== ==================
 Property            Type
 =================== ==================
+``hidden_name``     String
 ``target``          String
 ``defmode``         String
 ``show_default``    Boolean
