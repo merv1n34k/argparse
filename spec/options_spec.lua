@@ -57,14 +57,14 @@ describe("tests related to options", function()
          assert.same({server = {"foo", "bar"}}, args)
       end)
 
-      it("handles short option correclty", function()
+      it("handles short option correctly", function()
          local parser = Parser()
          parser:option "-s" "--server"
          local args = parser:parse({"-s", "foo"})
          assert.same({server = "foo"}, args)
       end)
 
-      it("handles flag correclty", function()
+      it("handles flag correctly", function()
          local parser = Parser()
          parser:flag "-q" "--quiet"
          local args = parser:parse({"--quiet"})
@@ -73,7 +73,7 @@ describe("tests related to options", function()
          assert.same({}, args)
       end)
 
-      it("handles combined flags correclty", function()
+      it("handles combined flags correctly", function()
          local parser = Parser()
          parser:flag "-q" "--quiet"
          parser:flag "-f" "--fast"
@@ -88,7 +88,7 @@ describe("tests related to options", function()
          assert.same({server = "foo"}, args)
       end)
 
-      it("handles flags combined with short option correclty", function()
+      it("handles flags combined with short option correctly", function()
          local parser = Parser()
          parser:flag "-q" "--quiet"
          parser:option "-s" "--server"
@@ -144,6 +144,14 @@ describe("tests related to options", function()
             :target "tail"
          local args = parser:parse{"--", "foo", "--unrelated", "bar"}
          assert.same({tail = {"foo", "--unrelated", "bar"}}, args)
+      end)
+
+      it("handles hidden option aliases", function()
+         local parser = Parser()
+         parser:option "--server"
+            :hidden_name "--from"
+         local args = parser:parse{"--from", "foo"}
+         assert.same({server = "foo"}, args)
       end)
 
       describe("Special chars set", function()

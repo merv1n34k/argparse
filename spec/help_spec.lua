@@ -311,6 +311,24 @@ Commands:
 Usage: foo]], parser:get_help())
    end)
 
+   it("does not mention hidden option and command aliases", function()
+      local parser = Parser "foo"
+      parser:option "--server"
+         :hidden_name "--from"
+      parser:command "newname"
+         :hidden_name "oldname"
+
+      assert.equal([[
+Usage: foo [-h] [--server <server>] <command> ...
+
+Options:
+   -h, --help            Show this help message and exit.
+   --server <server>
+
+Commands:
+   newname]], parser:get_help())
+   end)
+
    it("supports grouping options", function()
       local parser = Parser "foo"
          :add_help(false)
