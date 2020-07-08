@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.7.1 (2020-07-08)
+
+Tested with Lua 5.4
+
+### New features
+
+ * Hidden aliases can be added to an option or command by setting the
+   `hidden_name` property
+
+
 ## 0.7.0 (2019-08-14)
 
 The repository has been moved to a [new location](https://github.com/luarocks/argparse).
