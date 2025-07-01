@@ -2,6 +2,7 @@
 
 -- Copyright (c) 2013 - 2018 Peter Melnichenko
 --                      2019 Paul Ouellette
+--                      2025 Oleksii Stroganov
 
 -- Permission is hereby granted, free of charge, to any person obtaining a copy of
 -- this software and associated documentation files (the "Software"), to deal in
@@ -19,6 +20,10 @@
 -- COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 -- IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 -- CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+------------------------
+--- Helper functions ---
+------------------------
 
 local function deep_update(t1, t2)
     for k, v in pairs(t2) do
@@ -210,7 +215,141 @@ local function boundaries(name)
     }
 end
 
+local function split_lines(s)
+    if s == "" then
+        return {}
+    end
+
+    local lines = {}
+
+    if s:sub(-1) ~= "\n" then
+        s = s .. "\n"
+    end
+
+    for line in s:gmatch("([^\n]*)\n") do
+        table.insert(lines, line)
+    end
+
+    return lines
+end
+
+local function autowrap_line(line, max_length)
+    -- Algorithm for splitting lines is simple and greedy.
+    local result_lines = {}
+
+    -- Preserve original indentation of the line, put this at the beginning of each result line.
+    -- If the first word looks like a list marker ('*', '+', or '-'), add spaces so that starts
+    -- of the second and the following lines vertically align with the start of the second word.
+    local indentation = line:match("^ *")
+
+    if line:find("^ *[%*%+%-]") then
+        indentation = indentation .. " " .. line:match("^ *[%*%+%-]( *)")
+    end
+
+    -- Parts of the last line being assembled.
+    local line_parts = {}
+
+    -- Length of the current line.
+    local line_length = 0
+
+    -- Index of the next character to consider.
+    local index = 1
+
+    while true do
+        local word_start, word_finish, word = line:find("([^ ]+)", index)
+
+        if not word_start then
+            -- Ignore trailing spaces, if any.
+            break
+        end
+
+        local preceding_spaces = line:sub(index, word_start - 1)
+        index = word_finish + 1
+
+        if (#line_parts == 0) or (line_length + #preceding_spaces + #word <= max_length) then
+            -- Either this is the very first word or it fits as an addition to the current line, add it.
+            table.insert(line_parts, preceding_spaces) -- For the very first word this adds the indentation.
+            table.insert(line_parts, word)
+            line_length = line_length + #preceding_spaces + #word
+        else
+            -- Does not fit, finish current line and put the word into a new one.
+            table.insert(result_lines, table.concat(line_parts))
+            line_parts = { indentation, word }
+            line_length = #indentation + #word
+        end
+    end
+
+    if #line_parts > 0 then
+        table.insert(result_lines, table.concat(line_parts))
+    end
+
+    if #result_lines == 0 then
+        -- Preserve empty lines.
+        result_lines[1] = ""
+    end
+
+    return result_lines
+end
+
+-- Automatically wraps lines within given array,
+-- attempting to limit line length to `max_length`.
+-- Existing line splits are preserved.
+local function autowrap(lines, max_length)
+    local result_lines = {}
+
+    for _, line in ipairs(lines) do
+        local autowrapped_lines = autowrap_line(line, max_length)
+
+        for _, autowrapped_line in ipairs(autowrapped_lines) do
+            table.insert(result_lines, autowrapped_line)
+        end
+    end
+
+    return result_lines
+end
+
+-- Actions
+
 local actions = {}
+
+function actions.store_true(result, target)
+    result[target] = true
+end
+
+function actions.store_false(result, target)
+    result[target] = false
+end
+
+function actions.store(result, target, argument)
+    result[target] = argument
+end
+
+function actions.count(result, target, _, overwrite)
+    if not overwrite then
+        result[target] = result[target] + 1
+    end
+end
+
+function actions.append(result, target, argument, overwrite)
+    result[target] = result[target] or {}
+    table.insert(result[target], argument)
+
+    if overwrite then
+        table.remove(result[target], 1)
+    end
+end
+
+function actions.concat(result, target, arguments, overwrite)
+    if overwrite then
+        error("'concat' action can't handle too many invocations")
+    end
+
+    result[target] = result[target] or {}
+
+    for _, argument in ipairs(arguments) do
+        table.insert(result[target], argument)
+    end
+end
 
 local option_action = {
     "action",
@@ -269,6 +408,10 @@ local add_help = {
         end
     end,
 }
+
+-------------------------
+--- Class definitions ---
+-------------------------
 
 local Parser = class({
     _arguments = {},
@@ -374,22 +517,120 @@ local Option = class({
     option_init,
 }, Argument)
 
-function Parser:_inherit_property(name, default)
-    local element = self
+-- The code define helper function in the following order:
+-- Options -> Arguments -> Commands -> Parser
 
-    while true do
-        local value = element["_" .. name]
+-------------------------------
+--- Option helper functions ---
+-------------------------------
 
-        if value ~= nil then
-            return value
-        end
-
-        if not element._parent then
-            return default
-        end
-
-        element = element._parent
+function Option:_get_default_argname()
+    if self._choices then
+        return self:_get_choices_list()
+    else
+        return "<" .. self:_get_default_target() .. ">"
     end
+end
+
+function Option:_get_label_lines()
+    local argument_list = self:_get_argument_list()
+
+    if #argument_list == 0 then
+        -- Don't put aliases for simple flags like `-h` on different lines.
+        return { table.concat(self._public_aliases, ", ") }
+    end
+
+    local longest_alias_length = -1
+
+    for _, alias in ipairs(self._public_aliases) do
+        longest_alias_length = math.max(longest_alias_length, #alias)
+    end
+
+    local argument_list_repr = table.concat(argument_list, " ")
+    local lines = {}
+
+    for i, alias in ipairs(self._public_aliases) do
+        local line = (" "):rep(longest_alias_length - #alias) .. alias .. " " .. argument_list_repr
+
+        if i ~= #self._public_aliases then
+            line = line .. ","
+        end
+
+        table.insert(lines, line)
+    end
+
+    return lines
+end
+
+function Option:_get_usage()
+    local usage = self:_get_argument_list()
+    table.insert(usage, 1, self._name)
+    usage = table.concat(usage, " ")
+
+    if self._mincount == 0 or self._default then
+        usage = "[" .. usage .. "]"
+    end
+
+    return usage
+end
+
+function Option:_get_default_target()
+    local res
+
+    for _, alias in ipairs(self._public_aliases) do
+        if alias:sub(1, 1) == alias:sub(2, 2) then
+            res = alias:sub(3)
+            break
+        end
+    end
+
+    res = res or self._name:sub(2)
+    return (res:gsub("-", "_"))
+end
+
+function Option:_is_vararg()
+    return self._maxargs ~= self._minargs
+end
+
+---------------------------------
+--- Argument helper functions ---
+---------------------------------
+
+function Argument:_get_choices_list()
+    return "{" .. table.concat(self._choices, ",") .. "}"
+end
+
+function Argument:_get_default_argname()
+    if self._choices then
+        return self:_get_choices_list()
+    else
+        return "<" .. self._name .. ">"
+    end
+end
+
+-- Returns labels to be shown in the help message.
+function Argument:_get_label_lines()
+    if self._choices then
+        return { self:_get_choices_list() }
+    else
+        return { self._name }
+    end
+end
+
+function Argument:_get_description()
+    if self._default and self._show_default then
+        if self._description then
+            return ("%s (default: %s)"):format(self._description, self._default)
+        else
+            return ("default: %s"):format(self._default)
+        end
+    else
+        return self._description or ""
+    end
+end
+
+function Argument:_get_default_target()
+    return self._name
 end
 
 function Argument:_get_argument_list()
@@ -435,45 +676,6 @@ function Argument:_get_usage()
     return usage
 end
 
-function actions.store_true(result, target)
-    result[target] = true
-end
-
-function actions.store_false(result, target)
-    result[target] = false
-end
-
-function actions.store(result, target, argument)
-    result[target] = argument
-end
-
-function actions.count(result, target, _, overwrite)
-    if not overwrite then
-        result[target] = result[target] + 1
-    end
-end
-
-function actions.append(result, target, argument, overwrite)
-    result[target] = result[target] or {}
-    table.insert(result[target], argument)
-
-    if overwrite then
-        table.remove(result[target], 1)
-    end
-end
-
-function actions.concat(result, target, arguments, overwrite)
-    if overwrite then
-        error("'concat' action can't handle too many invocations")
-    end
-
-    result[target] = result[target] or {}
-
-    for _, argument in ipairs(arguments) do
-        table.insert(result[target], argument)
-    end
-end
-
 function Argument:_get_action()
     local action, init
 
@@ -517,117 +719,38 @@ function Argument:_get_argname(narg)
     end
 end
 
-function Argument:_get_choices_list()
-    return "{" .. table.concat(self._choices, ",") .. "}"
-end
-
-function Argument:_get_default_argname()
-    if self._choices then
-        return self:_get_choices_list()
-    else
-        return "<" .. self._name .. ">"
-    end
-end
-
-function Option:_get_default_argname()
-    if self._choices then
-        return self:_get_choices_list()
-    else
-        return "<" .. self:_get_default_target() .. ">"
-    end
-end
-
--- Returns labels to be shown in the help message.
-function Argument:_get_label_lines()
-    if self._choices then
-        return { self:_get_choices_list() }
-    else
-        return { self._name }
-    end
-end
-
-function Option:_get_label_lines()
-    local argument_list = self:_get_argument_list()
-
-    if #argument_list == 0 then
-        -- Don't put aliases for simple flags like `-h` on different lines.
-        return { table.concat(self._public_aliases, ", ") }
-    end
-
-    local longest_alias_length = -1
-
-    for _, alias in ipairs(self._public_aliases) do
-        longest_alias_length = math.max(longest_alias_length, #alias)
-    end
-
-    local argument_list_repr = table.concat(argument_list, " ")
-    local lines = {}
-
-    for i, alias in ipairs(self._public_aliases) do
-        local line = (" "):rep(longest_alias_length - #alias) .. alias .. " " .. argument_list_repr
-
-        if i ~= #self._public_aliases then
-            line = line .. ","
-        end
-
-        table.insert(lines, line)
-    end
-
-    return lines
-end
+--------------------------------
+--- Command helper functions ---
+--------------------------------
 
 function Command:_get_label_lines()
     return { table.concat(self._public_aliases, ", ") }
-end
-
-function Argument:_get_description()
-    if self._default and self._show_default then
-        if self._description then
-            return ("%s (default: %s)"):format(self._description, self._default)
-        else
-            return ("default: %s"):format(self._default)
-        end
-    else
-        return self._description or ""
-    end
 end
 
 function Command:_get_description()
     return self._summary or self._description or ""
 end
 
-function Option:_get_usage()
-    local usage = self:_get_argument_list()
-    table.insert(usage, 1, self._name)
-    usage = table.concat(usage, " ")
+------------------------------
+--- Parser helper function ---
+------------------------------
 
-    if self._mincount == 0 or self._default then
-        usage = "[" .. usage .. "]"
-    end
+function Parser:_inherit_property(name, default)
+    local element = self
 
-    return usage
-end
+    while true do
+        local value = element["_" .. name]
 
-function Argument:_get_default_target()
-    return self._name
-end
-
-function Option:_get_default_target()
-    local res
-
-    for _, alias in ipairs(self._public_aliases) do
-        if alias:sub(1, 1) == alias:sub(2, 2) then
-            res = alias:sub(3)
-            break
+        if value ~= nil then
+            return value
         end
+
+        if not element._parent then
+            return default
+        end
+
+        element = element._parent
     end
-
-    res = res or self._name:sub(2)
-    return (res:gsub("-", "_"))
-end
-
-function Option:_is_vararg()
-    return self._maxargs ~= self._minargs
 end
 
 function Parser:_get_fullname(exclude_root)
@@ -663,6 +786,10 @@ function Parser:_update_charset(charset)
     return charset
 end
 
+-----------------------------
+--- Parser main functions ---
+-----------------------------
+
 function Parser:argument(...)
     local argument = Argument(...)
     table.insert(self._arguments, argument)
@@ -674,6 +801,8 @@ function Parser:option(...)
     table.insert(self._options, option)
     return option
 end
+
+-- TODO: add no-prefix flags
 
 function Parser:flag(...)
     return self:option():args(0)(...)
@@ -697,6 +826,8 @@ function Parser:mutex(...)
     table.insert(self._mutexes, elements)
     return self
 end
+
+-- TODO: add mutins
 
 function Parser:group(name, ...)
     assert(type(name) == "string", ("bad argument #1 to 'group' (string expected, got %s)"):format(type(name)))
@@ -851,99 +982,6 @@ function Parser:get_usage()
     return table.concat(lines, "\n")
 end
 
-local function split_lines(s)
-    if s == "" then
-        return {}
-    end
-
-    local lines = {}
-
-    if s:sub(-1) ~= "\n" then
-        s = s .. "\n"
-    end
-
-    for line in s:gmatch("([^\n]*)\n") do
-        table.insert(lines, line)
-    end
-
-    return lines
-end
-
-local function autowrap_line(line, max_length)
-    -- Algorithm for splitting lines is simple and greedy.
-    local result_lines = {}
-
-    -- Preserve original indentation of the line, put this at the beginning of each result line.
-    -- If the first word looks like a list marker ('*', '+', or '-'), add spaces so that starts
-    -- of the second and the following lines vertically align with the start of the second word.
-    local indentation = line:match("^ *")
-
-    if line:find("^ *[%*%+%-]") then
-        indentation = indentation .. " " .. line:match("^ *[%*%+%-]( *)")
-    end
-
-    -- Parts of the last line being assembled.
-    local line_parts = {}
-
-    -- Length of the current line.
-    local line_length = 0
-
-    -- Index of the next character to consider.
-    local index = 1
-
-    while true do
-        local word_start, word_finish, word = line:find("([^ ]+)", index)
-
-        if not word_start then
-            -- Ignore trailing spaces, if any.
-            break
-        end
-
-        local preceding_spaces = line:sub(index, word_start - 1)
-        index = word_finish + 1
-
-        if (#line_parts == 0) or (line_length + #preceding_spaces + #word <= max_length) then
-            -- Either this is the very first word or it fits as an addition to the current line, add it.
-            table.insert(line_parts, preceding_spaces) -- For the very first word this adds the indentation.
-            table.insert(line_parts, word)
-            line_length = line_length + #preceding_spaces + #word
-        else
-            -- Does not fit, finish current line and put the word into a new one.
-            table.insert(result_lines, table.concat(line_parts))
-            line_parts = { indentation, word }
-            line_length = #indentation + #word
-        end
-    end
-
-    if #line_parts > 0 then
-        table.insert(result_lines, table.concat(line_parts))
-    end
-
-    if #result_lines == 0 then
-        -- Preserve empty lines.
-        result_lines[1] = ""
-    end
-
-    return result_lines
-end
-
--- Automatically wraps lines within given array,
--- attempting to limit line length to `max_length`.
--- Existing line splits are preserved.
-local function autowrap(lines, max_length)
-    local result_lines = {}
-
-    for _, line in ipairs(lines) do
-        local autowrapped_lines = autowrap_line(line, max_length)
-
-        for _, autowrapped_line in ipairs(autowrapped_lines) do
-            table.insert(result_lines, autowrapped_line)
-        end
-    end
-
-    return result_lines
-end
-
 function Parser:_get_element_help(element)
     local label_lines = element:_get_label_lines()
     local description_lines = split_lines(element:_get_description())
@@ -1063,8 +1101,8 @@ function Parser:get_help()
 
     local default_groups = {
         { name = "Arguments", type = Argument, elements = self._arguments },
-        { name = "Options", type = Option, elements = self._options },
-        { name = "Commands", type = Command, elements = self._commands },
+        { name = "Options",   type = Option,   elements = self._options },
+        { name = "Commands",  type = Command,  elements = self._commands },
     }
 
     local added_elements = {}
@@ -1136,115 +1174,6 @@ function Parser:add_help_command(value)
     return self
 end
 
-function Parser:_is_shell_safe()
-    if self._basename then
-        if self._basename:find("[^%w_%-%+%.]") then
-            return false
-        end
-    else
-        for _, alias in ipairs(self._aliases) do
-            if alias:find("[^%w_%-%+%.]") then
-                return false
-            end
-        end
-    end
-    for _, option in ipairs(self._options) do
-        for _, alias in ipairs(option._aliases) do
-            if alias:find("[^%w_%-%+%.]") then
-                return false
-            end
-        end
-        if option._choices then
-            for _, choice in ipairs(option._choices) do
-                if choice:find("[%s'\"]") then
-                    return false
-                end
-            end
-        end
-    end
-    for _, argument in ipairs(self._arguments) do
-        if argument._choices then
-            for _, choice in ipairs(argument._choices) do
-                if choice:find("[%s'\"]") then
-                    return false
-                end
-            end
-        end
-    end
-    for _, command in ipairs(self._commands) do
-        if not command:_is_shell_safe() then
-            return false
-        end
-    end
-    return true
-end
-
-function Parser:add_complete(value)
-    if value then
-        assert(
-            type(value) == "string" or type(value) == "table",
-            ("bad argument #1 to 'add_complete' (string or table expected, got %s)"):format(type(value))
-        )
-    end
-
-    local complete = self:option()
-        :description("Output a shell completion script for the specified shell.")
-        :args(1)
-        :choices({ "bash", "zsh", "fish" })
-        :action(function(_, _, shell)
-            io.write(self["get_" .. shell .. "_complete"](self))
-            os.exit(0)
-        end)
-
-    if value then
-        complete = complete(value)
-    end
-
-    if not complete._name then
-        complete("--completion")
-    end
-
-    return self
-end
-
-function Parser:add_complete_command(value)
-    if value then
-        assert(
-            type(value) == "string" or type(value) == "table",
-            ("bad argument #1 to 'add_complete_command' (string or table expected, got %s)"):format(type(value))
-        )
-    end
-
-    local complete = self:command():description("Output a shell completion script.")
-    complete
-        :argument("shell")
-        :description("The shell to output a completion script for.")
-        :choices({ "bash", "zsh", "fish" })
-        :action(function(_, _, shell)
-            io.write(self["get_" .. shell .. "_complete"](self))
-            os.exit(0)
-        end)
-
-    if value then
-        complete = complete(value)
-    end
-
-    if not complete._name then
-        complete("completion")
-    end
-
-    return self
-end
-
-local function base_name(pathname)
-    return pathname:gsub("[/\\]*$", ""):match(".*[/\\]([^/\\]*)") or pathname
-end
-
-local function get_short_description(element)
-    local short = element:_get_description():match("^(.-)%.%s")
-    return short or element:_get_description():match("^(.-)%.?$")
-end
-
 function Parser:_get_options()
     local options = {}
     for _, option in ipairs(self._options) do
@@ -1263,378 +1192,6 @@ function Parser:_get_commands()
         end
     end
     return table.concat(commands, " ")
-end
-
-function Parser:_bash_option_args(buf, indent)
-    local opts = {}
-    for _, option in ipairs(self._options) do
-        if option._choices or option._minargs > 0 then
-            local compreply
-            if option._choices then
-                compreply = 'COMPREPLY=($(compgen -W "' .. table.concat(option._choices, " ") .. '" -- "$cur"))'
-            else
-                compreply = 'COMPREPLY=($(compgen -f -- "$cur"))'
-            end
-            table.insert(opts, (" "):rep(indent + 4) .. table.concat(option._aliases, "|") .. ")")
-            table.insert(opts, (" "):rep(indent + 8) .. compreply)
-            table.insert(opts, (" "):rep(indent + 8) .. "return 0")
-            table.insert(opts, (" "):rep(indent + 8) .. ";;")
-        end
-    end
-
-    if #opts > 0 then
-        table.insert(buf, (" "):rep(indent) .. 'case "$prev" in')
-        table.insert(buf, table.concat(opts, "\n"))
-        table.insert(buf, (" "):rep(indent) .. "esac\n")
-    end
-end
-
-function Parser:_bash_get_cmd(buf, indent)
-    if #self._commands == 0 then
-        return
-    end
-
-    table.insert(buf, (" "):rep(indent) .. 'args=("${args[@]:1}")')
-    table.insert(buf, (" "):rep(indent) .. 'for arg in "${args[@]}"; do')
-    table.insert(buf, (" "):rep(indent + 4) .. 'case "$arg" in')
-
-    for _, command in ipairs(self._commands) do
-        table.insert(buf, (" "):rep(indent + 8) .. table.concat(command._aliases, "|") .. ")")
-        if self._parent then
-            table.insert(buf, (" "):rep(indent + 12) .. 'cmd="$cmd ' .. command._name .. '"')
-        else
-            table.insert(buf, (" "):rep(indent + 12) .. 'cmd="' .. command._name .. '"')
-        end
-        table.insert(buf, (" "):rep(indent + 12) .. 'opts="$opts ' .. command:_get_options() .. '"')
-        command:_bash_get_cmd(buf, indent + 12)
-        table.insert(buf, (" "):rep(indent + 12) .. "break")
-        table.insert(buf, (" "):rep(indent + 12) .. ";;")
-    end
-
-    table.insert(buf, (" "):rep(indent + 4) .. "esac")
-    table.insert(buf, (" "):rep(indent) .. "done")
-end
-
-function Parser:_bash_cmd_completions(buf)
-    local cmd_buf = {}
-    if self._parent then
-        self:_bash_option_args(cmd_buf, 12)
-    end
-    if #self._commands > 0 then
-        table.insert(cmd_buf, (" "):rep(12) .. 'COMPREPLY=($(compgen -W "' .. self:_get_commands() .. '" -- "$cur"))')
-    elseif self._is_help_command then
-        table.insert(
-            cmd_buf,
-            (" "):rep(12) .. 'COMPREPLY=($(compgen -W "' .. self._parent:_get_commands() .. '" -- "$cur"))'
-        )
-    end
-    if #cmd_buf > 0 then
-        table.insert(buf, (" "):rep(8) .. "'" .. self:_get_fullname(true) .. "')")
-        table.insert(buf, table.concat(cmd_buf, "\n"))
-        table.insert(buf, (" "):rep(12) .. ";;")
-    end
-
-    for _, command in ipairs(self._commands) do
-        command:_bash_cmd_completions(buf)
-    end
-end
-
-function Parser:get_bash_complete()
-    self._basename = base_name(self._name)
-    assert(self:_is_shell_safe())
-    local buf = {
-        ([[
-_%s() {
-    local IFS=$' \t\n'
-    local args cur prev cmd opts arg
-    args=("${COMP_WORDS[@]}")
-    cur="${COMP_WORDS[COMP_CWORD]}"
-    prev="${COMP_WORDS[COMP_CWORD-1]}"
-    opts="%s"
-]]):format(self._basename, self:_get_options()),
-    }
-
-    self:_bash_option_args(buf, 4)
-    self:_bash_get_cmd(buf, 4)
-    if #self._commands > 0 then
-        table.insert(buf, "")
-        table.insert(buf, (" "):rep(4) .. 'case "$cmd" in')
-        self:_bash_cmd_completions(buf)
-        table.insert(buf, (" "):rep(4) .. "esac\n")
-    end
-
-    table.insert(
-        buf,
-        ([=[
-    if [[ "$cur" = -* ]]; then
-        COMPREPLY=($(compgen -W "$opts" -- "$cur"))
-    fi
-}
-
-complete -F _%s -o bashdefault -o default %s
-]=]):format(self._basename, self._basename)
-    )
-
-    return table.concat(buf, "\n")
-end
-
-function Parser:_zsh_arguments(buf, cmd_name, indent)
-    if self._parent then
-        table.insert(buf, (" "):rep(indent) .. "options=(")
-        table.insert(buf, (" "):rep(indent + 2) .. "$options")
-    else
-        table.insert(buf, (" "):rep(indent) .. "local -a options=(")
-    end
-
-    for _, option in ipairs(self._options) do
-        local line = {}
-        if #option._aliases > 1 then
-            if option._maxcount > 1 then
-                table.insert(line, '"*"')
-            end
-            table.insert(line, "{" .. table.concat(option._aliases, ",") .. '}"')
-        else
-            table.insert(line, '"')
-            if option._maxcount > 1 then
-                table.insert(line, "*")
-            end
-            table.insert(line, option._name)
-        end
-        if option._description then
-            local description = get_short_description(option):gsub('["%]:`$]', "\\%0")
-            table.insert(line, "[" .. description .. "]")
-        end
-        if option._maxargs == math.huge then
-            table.insert(line, ":*")
-        end
-        if option._choices then
-            table.insert(line, ": :(" .. table.concat(option._choices, " ") .. ")")
-        elseif option._maxargs > 0 then
-            table.insert(line, ": :_files")
-        end
-        table.insert(line, '"')
-        table.insert(buf, (" "):rep(indent + 2) .. table.concat(line))
-    end
-
-    table.insert(buf, (" "):rep(indent) .. ")")
-    table.insert(buf, (" "):rep(indent) .. "_arguments -s -S \\")
-    table.insert(buf, (" "):rep(indent + 2) .. "$options \\")
-
-    if self._is_help_command then
-        table.insert(buf, (" "):rep(indent + 2) .. '": :(' .. self._parent:_get_commands() .. ')" \\')
-    else
-        for _, argument in ipairs(self._arguments) do
-            local spec
-            if argument._choices then
-                spec = ": :(" .. table.concat(argument._choices, " ") .. ")"
-            else
-                spec = ": :_files"
-            end
-            if argument._maxargs == math.huge then
-                table.insert(buf, (" "):rep(indent + 2) .. '"*' .. spec .. '" \\')
-                break
-            end
-            for _ = 1, argument._maxargs do
-                table.insert(buf, (" "):rep(indent + 2) .. '"' .. spec .. '" \\')
-            end
-        end
-
-        if #self._commands > 0 then
-            table.insert(buf, (" "):rep(indent + 2) .. '": :_' .. cmd_name .. '_cmds" \\')
-            table.insert(buf, (" "):rep(indent + 2) .. '"*:: :->args" \\')
-        end
-    end
-
-    table.insert(buf, (" "):rep(indent + 2) .. "&& return 0")
-end
-
-function Parser:_zsh_cmds(buf, cmd_name)
-    table.insert(buf, "\n_" .. cmd_name .. "_cmds() {")
-    table.insert(buf, "  local -a commands=(")
-
-    for _, command in ipairs(self._commands) do
-        local line = {}
-        if #command._aliases > 1 then
-            table.insert(line, "{" .. table.concat(command._aliases, ",") .. '}"')
-        else
-            table.insert(line, '"' .. command._name)
-        end
-        if command._description then
-            table.insert(line, ":" .. get_short_description(command):gsub('["`$]', "\\%0"))
-        end
-        table.insert(buf, "    " .. table.concat(line) .. '"')
-    end
-
-    table.insert(buf, '  )\n  _describe "command" commands\n}')
-end
-
-function Parser:_zsh_complete_help(buf, cmds_buf, cmd_name, indent)
-    if #self._commands == 0 then
-        return
-    end
-
-    self:_zsh_cmds(cmds_buf, cmd_name)
-    table.insert(buf, "\n" .. (" "):rep(indent) .. "case $words[1] in")
-
-    for _, command in ipairs(self._commands) do
-        local name = cmd_name .. "_" .. command._name
-        table.insert(buf, (" "):rep(indent + 2) .. table.concat(command._aliases, "|") .. ")")
-        command:_zsh_arguments(buf, name, indent + 4)
-        command:_zsh_complete_help(buf, cmds_buf, name, indent + 4)
-        table.insert(buf, (" "):rep(indent + 4) .. ";;\n")
-    end
-
-    table.insert(buf, (" "):rep(indent) .. "esac")
-end
-
-function Parser:get_zsh_complete()
-    self._basename = base_name(self._name)
-    assert(self:_is_shell_safe())
-    local buf = { ("#compdef %s\n"):format(self._basename) }
-    local cmds_buf = {}
-    table.insert(buf, "_" .. self._basename .. "() {")
-    if #self._commands > 0 then
-        table.insert(buf, "  local context state state_descr line")
-        table.insert(buf, "  typeset -A opt_args\n")
-    end
-    self:_zsh_arguments(buf, self._basename, 2)
-    self:_zsh_complete_help(buf, cmds_buf, self._basename, 2)
-    table.insert(buf, "\n  return 1")
-    table.insert(buf, "}")
-
-    local result = table.concat(buf, "\n")
-    if #cmds_buf > 0 then
-        result = result .. "\n" .. table.concat(cmds_buf, "\n")
-    end
-    return result .. "\n\n_" .. self._basename .. "\n"
-end
-
-local function fish_escape(string)
-    return string:gsub("[\\']", "\\%0")
-end
-
-function Parser:_fish_get_cmd(buf, indent)
-    if #self._commands == 0 then
-        return
-    end
-
-    table.insert(buf, (" "):rep(indent) .. "set -e cmdline[1]")
-    table.insert(buf, (" "):rep(indent) .. "for arg in $cmdline")
-    table.insert(buf, (" "):rep(indent + 4) .. "switch $arg")
-
-    for _, command in ipairs(self._commands) do
-        table.insert(buf, (" "):rep(indent + 8) .. "case " .. table.concat(command._aliases, " "))
-        table.insert(buf, (" "):rep(indent + 12) .. "set cmd $cmd " .. command._name)
-        command:_fish_get_cmd(buf, indent + 12)
-        table.insert(buf, (" "):rep(indent + 12) .. "break")
-    end
-
-    table.insert(buf, (" "):rep(indent + 4) .. "end")
-    table.insert(buf, (" "):rep(indent) .. "end")
-end
-
-function Parser:_fish_complete_help(buf, basename)
-    local prefix = "complete -c " .. basename
-    table.insert(buf, "")
-
-    for _, command in ipairs(self._commands) do
-        local aliases = table.concat(command._aliases, " ")
-        local line
-        if self._parent then
-            line = ("%s -n '__fish_%s_using_command %s' -xa '%s'"):format(
-                prefix,
-                basename,
-                self:_get_fullname(true),
-                aliases
-            )
-        else
-            line = ("%s -n '__fish_%s_using_command' -xa '%s'"):format(prefix, basename, aliases)
-        end
-        if command._description then
-            line = ("%s -d '%s'"):format(line, fish_escape(get_short_description(command)))
-        end
-        table.insert(buf, line)
-    end
-
-    if self._is_help_command then
-        local line = ("%s -n '__fish_%s_using_command %s' -xa '%s'"):format(
-            prefix,
-            basename,
-            self:_get_fullname(true),
-            self._parent:_get_commands()
-        )
-        table.insert(buf, line)
-    end
-
-    for _, option in ipairs(self._options) do
-        local parts = { prefix }
-
-        if self._parent then
-            table.insert(parts, "-n '__fish_" .. basename .. "_seen_command " .. self:_get_fullname(true) .. "'")
-        end
-
-        for _, alias in ipairs(option._aliases) do
-            if alias:match("^%-.$") then
-                table.insert(parts, "-s " .. alias:sub(2))
-            elseif alias:match("^%-%-.+") then
-                table.insert(parts, "-l " .. alias:sub(3))
-            end
-        end
-
-        if option._choices then
-            table.insert(parts, "-xa '" .. table.concat(option._choices, " ") .. "'")
-        elseif option._minargs > 0 then
-            table.insert(parts, "-r")
-        end
-
-        if option._description then
-            table.insert(parts, "-d '" .. fish_escape(get_short_description(option)) .. "'")
-        end
-
-        table.insert(buf, table.concat(parts, " "))
-    end
-
-    for _, command in ipairs(self._commands) do
-        command:_fish_complete_help(buf, basename)
-    end
-end
-
-function Parser:get_fish_complete()
-    self._basename = base_name(self._name)
-    assert(self:_is_shell_safe())
-    local buf = {}
-
-    if #self._commands > 0 then
-        table.insert(
-            buf,
-            ([[
-function __fish_%s_print_command
-    set -l cmdline (commandline -poc)
-    set -l cmd]]):format(self._basename)
-        )
-        self:_fish_get_cmd(buf, 4)
-        table.insert(
-            buf,
-            ([[
-    echo "$cmd"
-end
-
-function __fish_%s_using_command
-    test (__fish_%s_print_command) = "$argv"
-    and return 0
-    or return 1
-end
-
-function __fish_%s_seen_command
-    string match -q "$argv*" (__fish_%s_print_command)
-    and return 0
-    or return 1
-end]]):format(self._basename, self._basename, self._basename, self._basename)
-        )
-    end
-
-    self:_fish_complete_help(buf, self._basename)
-    return table.concat(buf, "\n") .. "\n"
 end
 
 local function get_tip(context, wrong_name)
@@ -1687,6 +1244,10 @@ local function get_tip(context, wrong_name)
         return ""
     end
 end
+
+-----------------------------
+--- ElementState functions ---
+-----------------------------
 
 local ElementState = class({
     invocations = 0,
@@ -1840,6 +1401,10 @@ function ElementState:close()
         self.action(self.result, self.target, args, self.overwrite)
     end
 end
+
+-----------------------------
+--- ParseState functions ---
+-----------------------------
 
 local ParseState = class({
     result = {},
