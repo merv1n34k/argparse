@@ -25,6 +25,10 @@
 --- Helper functions ---
 ------------------------
 
+-- TODO: add healthcheck function to check for normal arguments and command
+-- TODO: add fmt to tell user what they should charge
+-- TODO: create protocol for argument parsing
+
 local function deep_update(t1, t2)
     for k, v in pairs(t2) do
         if type(v) == "table" then
@@ -417,7 +421,7 @@ local Parser = class({
     _arguments = {},
     _options = {},
     _commands = {},
-    _mutexes = {},
+    _mutuals = {},
     _groups = {},
     _require_command = true,
     _handle_options = true,
@@ -497,6 +501,7 @@ local Option = class({
     _public_aliases = {},
     _mincount = 0,
     _overwrite = true,
+    _no_prefix = false,
 }, {
     args = 6,
     multiname,
@@ -513,6 +518,7 @@ local Option = class({
     typechecked("argname", "string", "table"),
     typechecked("choices", "table"),
     typechecked("hidden", "boolean"),
+    typechecked("no_prefix", "boolean"),
     option_action,
     option_init,
 }, Argument)
@@ -524,6 +530,8 @@ local Option = class({
 --- Option helper functions ---
 -------------------------------
 
+
+
 function Option:_get_default_argname()
     if self._choices then
         return self:_get_choices_list()
@@ -532,27 +540,50 @@ function Option:_get_default_argname()
     end
 end
 
+function Option:_get_display_aliases()
+    if not self._no_prefix or self._maxargs ~= 0 then
+        return self._public_aliases
+    end
+
+    local display_aliases = {}
+
+    for _, a in ipairs(self._public_aliases) do
+        if a:sub(1, 2) == "--" then
+            local name = a:gsub("^%-%-", "")
+            table.insert(display_aliases, "--[no]" .. name)
+        else
+            -- Keep short options unchanged
+            table.insert(display_aliases, a)
+        end
+    end
+
+    return #display_aliases > 0 and display_aliases or self._public_aliases
+end
+
 function Option:_get_label_lines()
     local argument_list = self:_get_argument_list()
 
     if #argument_list == 0 then
         -- Don't put aliases for simple flags like `-h` on different lines.
-        return { table.concat(self._public_aliases, ", ") }
+        local display_aliases = self:_get_display_aliases()
+        return { table.concat(display_aliases, ", ") }
     end
+
+    local display_aliases = self:_get_display_aliases()
 
     local longest_alias_length = -1
 
-    for _, alias in ipairs(self._public_aliases) do
+    for _, alias in ipairs(display_aliases) do
         longest_alias_length = math.max(longest_alias_length, #alias)
     end
 
     local argument_list_repr = table.concat(argument_list, " ")
     local lines = {}
 
-    for i, alias in ipairs(self._public_aliases) do
+    for i, alias in ipairs(display_aliases) do
         local line = (" "):rep(longest_alias_length - #alias) .. alias .. " " .. argument_list_repr
 
-        if i ~= #self._public_aliases then
+        if i ~= #display_aliases then
             line = line .. ","
         end
 
@@ -815,19 +846,27 @@ function Parser:command(...)
     return command
 end
 
-function Parser:mutex(...)
+function Parser:mutual(exclusive, ...)
+    local mutual_type = exclusive and "mutex" or "mutin"
     local elements = { ... }
 
     for i, element in ipairs(elements) do
         local mt = getmetatable(element)
-        assert(mt == Option or mt == Argument, ("bad argument #%d to 'mutex' (Option or Argument expected)"):format(i))
+        assert(mt == Option or mt == Argument,
+            ("bad argument #%d to '%s' (Option or Argument expected)"):format(i, mutual_type))
     end
 
-    table.insert(self._mutexes, elements)
+    table.insert(self._mutuals, { exclusive = exclusive, elements = elements })
     return self
 end
 
--- TODO: add mutins
+function Parser:mutex(...)
+    return self:mutual(true, ...)
+end
+
+function Parser:mutin(...)
+    return self:mutual(false, ...)
+end
 
 function Parser:group(name, ...)
     assert(type(name) == "string", ("bad argument #1 to 'group' (string expected, got %s)"):format(type(name)))
@@ -876,20 +915,20 @@ function Parser:get_usage()
     -- 4. Remaining mutexes.
     -- 5. Remaining options.
 
-    local elements_in_mutexes = {}
+    local elements_in_mutuals = {}
     local added_elements = {}
-    local added_mutexes = {}
-    local argument_to_mutexes = {}
+    local added_mutuals = {}
+    local argument_to_mutuals = {}
 
-    local function add_mutex(mutex, main_argument)
-        if added_mutexes[mutex] then
+    local function add_mutual(mutual, main_argument)
+        if added_mutuals[mutual] then
             return
         end
 
-        added_mutexes[mutex] = true
+        added_mutuals[mutual] = true
         local buf = {}
 
-        for _, element in ipairs(mutex) do
+        for _, element in ipairs(mutual.elements) do
             if not element._hidden and not added_elements[element] then
                 if getmetatable(element) == Option or element == main_argument then
                     table.insert(buf, element:_get_usage())
@@ -912,31 +951,33 @@ function Parser:get_usage()
         end
     end
 
-    for _, mutex in ipairs(self._mutexes) do
-        local is_vararg = false
-        local has_argument = false
+    for _, mutual in ipairs(self._mutuals) do
+        if mutual.exclusive then -- Only process mutex groups for usage
+            local is_vararg = false
+            local has_argument = false
 
-        for _, element in ipairs(mutex) do
-            if getmetatable(element) == Option then
-                if element:_is_vararg() then
-                    is_vararg = true
+            for _, element in ipairs(mutual.elements) do
+                if getmetatable(element) == Option then
+                    if element:_is_vararg() then
+                        is_vararg = true
+                    end
+                else
+                    has_argument = true
+                    argument_to_mutuals[element] = argument_to_mutuals[element] or {}
+                    table.insert(argument_to_mutuals[element], mutual)
                 end
-            else
-                has_argument = true
-                argument_to_mutexes[element] = argument_to_mutexes[element] or {}
-                table.insert(argument_to_mutexes[element], mutex)
+
+                elements_in_mutuals[element] = true
             end
 
-            elements_in_mutexes[element] = true
-        end
-
-        if not is_vararg and not has_argument then
-            add_mutex(mutex)
+            if not is_vararg and not has_argument then
+                add_mutual(mutual)
+            end
         end
     end
 
     for _, option in ipairs(self._options) do
-        if not elements_in_mutexes[option] and not option:_is_vararg() then
+        if not elements_in_mutuals[option] and not option:_is_vararg() then
             add_element(option)
         end
     end
@@ -944,25 +985,27 @@ function Parser:get_usage()
     -- Add usages for positional arguments, together with one mutex containing them, if they are in a mutex.
     for _, argument in ipairs(self._arguments) do
         -- Pick a mutex as a part of which to show this argument, take the first one that's still available.
-        local mutex
+        local mutual
 
-        if elements_in_mutexes[argument] then
-            for _, argument_mutex in ipairs(argument_to_mutexes[argument]) do
-                if not added_mutexes[argument_mutex] then
-                    mutex = argument_mutex
+        if elements_in_mutuals[argument] and argument_to_mutuals[argument] then
+            for _, argument_mutual in ipairs(argument_to_mutuals[argument]) do
+                if not added_mutuals[argument_mutual] then
+                    mutual = argument_mutual
                 end
             end
         end
 
-        if mutex then
-            add_mutex(mutex, argument)
+        if mutual then
+            add_mutual(mutual, argument)
         else
             add_element(argument)
         end
     end
 
-    for _, mutex in ipairs(self._mutexes) do
-        add_mutex(mutex)
+    for _, mutual in ipairs(self._mutuals) do
+        if mutual.exclusive then -- Only show mutex groups
+            add_mutual(mutual)
+        end
     end
 
     for _, option in ipairs(self._options) do
@@ -1174,26 +1217,6 @@ function Parser:add_help_command(value)
     return self
 end
 
-function Parser:_get_options()
-    local options = {}
-    for _, option in ipairs(self._options) do
-        for _, alias in ipairs(option._aliases) do
-            table.insert(options, alias)
-        end
-    end
-    return table.concat(options, " ")
-end
-
-function Parser:_get_commands()
-    local commands = {}
-    for _, command in ipairs(self._commands) do
-        for _, alias in ipairs(command._aliases) do
-            table.insert(commands, alias)
-        end
-    end
-    return table.concat(commands, " ")
-end
-
 local function get_tip(context, wrong_name)
     local context_pool = {}
     local possible_name
@@ -1309,7 +1332,17 @@ function ElementState:set_name(alias)
     self.name = ("%s '%s'"):format(alias and "option" or "argument", alias or self.element._name)
 end
 
-function ElementState:invoke()
+function ElementState:switch()
+    if self.element._maxargs == 0 then -- Only for flags
+        if self.action == actions.store_true then
+            self.action = actions.store_false
+        elseif self.action == actions.store_false then
+            self.action = actions.store_true
+        end
+    end
+end
+
+function ElementState:invoke(is_negated)
     self.open = true
     self.overwrite = false
 
@@ -1325,6 +1358,10 @@ function ElementState:invoke()
     end
 
     self.args = {}
+
+    if is_negated then
+        self:switch()
+    end
 
     if self.element._maxargs <= 0 then
         self:close()
@@ -1411,8 +1448,8 @@ local ParseState = class({
     options = {},
     arguments = {},
     argument_i = 1,
-    element_to_mutexes = {},
-    mutex_to_element_state = {},
+    element_to_mutuals = {},
+    mutual_to_element_state = {},
     command_actions = {},
 })
 
@@ -1444,13 +1481,13 @@ function ParseState:switch(parser)
         end
     end
 
-    for _, mutex in ipairs(parser._mutexes) do
-        for _, element in ipairs(mutex) do
-            if not self.element_to_mutexes[element] then
-                self.element_to_mutexes[element] = {}
+    for _, mutual in ipairs(parser._mutuals) do
+        for _, element in ipairs(mutual.elements) do
+            if not self.element_to_mutuals[element] then
+                self.element_to_mutuals[element] = {}
             end
 
-            table.insert(self.element_to_mutexes[element], mutex)
+            table.insert(self.element_to_mutuals[element], mutual)
         end
     end
 
@@ -1496,26 +1533,35 @@ function ParseState:get_command(name)
     end
 end
 
-function ParseState:check_mutexes(element_state)
-    if self.element_to_mutexes[element_state.element] then
-        for _, mutex in ipairs(self.element_to_mutexes[element_state.element]) do
-            local used_element_state = self.mutex_to_element_state[mutex]
+function ParseState:check_mutuals(element_state)
+    if self.element_to_mutuals[element_state.element] then
+        for _, mutual in ipairs(self.element_to_mutuals[element_state.element]) do
+            if mutual.exclusive then
+                -- Mutex: check immediately
+                local used_element_state = self.mutual_to_element_state[mutual]
 
-            if used_element_state and used_element_state ~= element_state then
-                self:error("%s can not be used together with %s", element_state.name, used_element_state.name)
+                if used_element_state and used_element_state ~= element_state then
+                    self:error("%s can not be used together with %s", element_state.name, used_element_state.name)
+                else
+                    self.mutual_to_element_state[mutual] = element_state
+                end
             else
-                self.mutex_to_element_state[mutex] = element_state
+                -- Mutin: just track usage
+                if not self.mutual_to_element_state[mutual] then
+                    self.mutual_to_element_state[mutual] = {}
+                end
+                self.mutual_to_element_state[mutual][element_state.element] = element_state
             end
         end
     end
 end
 
-function ParseState:invoke(option, name)
+function ParseState:invoke(option, name, is_negated)
     self:close()
     option:set_name(name)
-    self:check_mutexes(option, name)
+    self:check_mutuals(option)
 
-    if option:invoke() then
+    if option:invoke(is_negated) then
         self.option = option
     end
 end
@@ -1526,7 +1572,7 @@ function ParseState:pass(arg)
             self.option = nil
         end
     elseif self.argument then
-        self:check_mutexes(self.argument)
+        self:check_mutuals(self.argument)
 
         if not self.argument:pass(arg) then
             self.argument_i = self.argument_i + 1
@@ -1560,6 +1606,37 @@ function ParseState:finalize()
             argument:complete_invocation()
         else
             argument:close()
+        end
+    end
+
+    -- Check mutin constraints
+    for _, mutual in ipairs(self.parser._mutuals) do
+        if not mutual.exclusive then
+            local used_elements = self.mutual_to_element_state[mutual] or {}
+            local used_names = {}
+            local missing_names = {}
+
+            for _, element in ipairs(mutual.elements) do
+                if used_elements[element] then
+                    table.insert(used_names, used_elements[element].name)
+                else
+                    local name
+                    if getmetatable(element) == Option then
+                        name = ("option '%s'"):format(element._name)
+                    else
+                        name = ("argument '%s'"):format(element._name)
+                    end
+                    table.insert(missing_names, name)
+                end
+            end
+
+            if #used_names > 0 and #used_names < #mutual.elements then
+                if #used_names == 1 then
+                    self:error("%s requires %s", used_names[1], table.concat(missing_names, " and "))
+                else
+                    self:error("%s require %s", table.concat(used_names, " and "), table.concat(missing_names, " and "))
+                end
+            end
         end
     end
 
@@ -1633,8 +1710,22 @@ function ParseState:parse(args)
                                 self:invoke(option, name)
                                 self:pass(arg:sub(equals + 1))
                             else
-                                local option = self:get_option(arg)
-                                self:invoke(option, arg)
+                                -- Check for --no prefix
+                                local is_negated = false
+                                local option_name = arg
+
+                                if arg:sub(1, 4) == "--no" and #arg > 4 then
+                                    local base_name = "--" .. arg:sub(5) -- "--noverbose" -> "--verbose"
+                                    local option = self.options[base_name]
+
+                                    if option and option.element._no_prefix and option.element._maxargs == 0 then
+                                        is_negated = true
+                                        option_name = base_name
+                                    end
+                                end
+
+                                local option = self:get_option(option_name)
+                                self:invoke(option, option_name, is_negated)
                             end
                         end
                     else
@@ -1701,9 +1792,491 @@ function Parser:pparse(args)
     end
 end
 
+-------------------
+--- Completions ---
+-------------------
+
+function Parser:_is_shell_safe()
+    if self._basename then
+        if self._basename:find("[^%w_%-%+%.]") then
+            return false
+        end
+    else
+        for _, alias in ipairs(self._aliases) do
+            if alias:find("[^%w_%-%+%.]") then
+                return false
+            end
+        end
+    end
+    for _, option in ipairs(self._options) do
+        for _, alias in ipairs(option._aliases) do
+            if alias:find("[^%w_%-%+%.]") then
+                return false
+            end
+        end
+        if option._choices then
+            for _, choice in ipairs(option._choices) do
+                if choice:find("[%s'\"]") then
+                    return false
+                end
+            end
+        end
+    end
+    for _, argument in ipairs(self._arguments) do
+        if argument._choices then
+            for _, choice in ipairs(argument._choices) do
+                if choice:find("[%s'\"]") then
+                    return false
+                end
+            end
+        end
+    end
+    for _, command in ipairs(self._commands) do
+        if not command:_is_shell_safe() then
+            return false
+        end
+    end
+    return true
+end
+
+function Parser:add_complete(value)
+    if value then
+        assert(type(value) == "string" or type(value) == "table",
+            ("bad argument #1 to 'add_complete' (string or table expected, got %s)"):format(type(value)))
+    end
+
+    local complete = self:option()
+        :description "Output a shell completion script for the specified shell."
+        :args(1)
+        :choices { "bash", "zsh", "fish" }
+        :action(function(_, _, shell)
+            io.write(self["get_" .. shell .. "_complete"](self))
+            os.exit(0)
+        end)
+
+    if value then
+        complete = complete(value)
+    end
+
+    if not complete._name then
+        complete "--completion"
+    end
+
+    return self
+end
+
+function Parser:add_complete_command(value)
+    if value then
+        assert(type(value) == "string" or type(value) == "table",
+            ("bad argument #1 to 'add_complete_command' (string or table expected, got %s)"):format(type(value)))
+    end
+
+    local complete = self:command()
+        :description "Output a shell completion script."
+    complete:argument "shell"
+        :description "The shell to output a completion script for."
+        :choices { "bash", "zsh", "fish" }
+        :action(function(_, _, shell)
+            io.write(self["get_" .. shell .. "_complete"](self))
+            os.exit(0)
+        end)
+
+    if value then
+        complete = complete(value)
+    end
+
+    if not complete._name then
+        complete "completion"
+    end
+
+    return self
+end
+
+local function base_name(pathname)
+    return pathname:gsub("[/\\]*$", ""):match(".*[/\\]([^/\\]*)") or pathname
+end
+
+local function get_short_description(element)
+    local short = element:_get_description():match("^(.-)%.%s")
+    return short or element:_get_description():match("^(.-)%.?$")
+end
+
+function Parser:_get_options()
+    local options = {}
+    for _, option in ipairs(self._options) do
+        for _, alias in ipairs(option._aliases) do
+            table.insert(options, alias)
+        end
+    end
+    return table.concat(options, " ")
+end
+
+function Parser:_get_commands()
+    local commands = {}
+    for _, command in ipairs(self._commands) do
+        for _, alias in ipairs(command._aliases) do
+            table.insert(commands, alias)
+        end
+    end
+    return table.concat(commands, " ")
+end
+
+function Parser:_bash_option_args(buf, indent)
+    local opts = {}
+    for _, option in ipairs(self._options) do
+        if option._choices or option._minargs > 0 then
+            local compreply
+            if option._choices then
+                compreply = 'COMPREPLY=($(compgen -W "' .. table.concat(option._choices, " ") .. '" -- "$cur"))'
+            else
+                compreply = 'COMPREPLY=($(compgen -f -- "$cur"))'
+            end
+            table.insert(opts, (" "):rep(indent + 4) .. table.concat(option._aliases, "|") .. ")")
+            table.insert(opts, (" "):rep(indent + 8) .. compreply)
+            table.insert(opts, (" "):rep(indent + 8) .. "return 0")
+            table.insert(opts, (" "):rep(indent + 8) .. ";;")
+        end
+    end
+
+    if #opts > 0 then
+        table.insert(buf, (" "):rep(indent) .. 'case "$prev" in')
+        table.insert(buf, table.concat(opts, "\n"))
+        table.insert(buf, (" "):rep(indent) .. "esac\n")
+    end
+end
+
+function Parser:_bash_get_cmd(buf, indent)
+    if #self._commands == 0 then
+        return
+    end
+
+    table.insert(buf, (" "):rep(indent) .. 'args=("${args[@]:1}")')
+    table.insert(buf, (" "):rep(indent) .. 'for arg in "${args[@]}"; do')
+    table.insert(buf, (" "):rep(indent + 4) .. 'case "$arg" in')
+
+    for _, command in ipairs(self._commands) do
+        table.insert(buf, (" "):rep(indent + 8) .. table.concat(command._aliases, "|") .. ")")
+        if self._parent then
+            table.insert(buf, (" "):rep(indent + 12) .. 'cmd="$cmd ' .. command._name .. '"')
+        else
+            table.insert(buf, (" "):rep(indent + 12) .. 'cmd="' .. command._name .. '"')
+        end
+        table.insert(buf, (" "):rep(indent + 12) .. 'opts="$opts ' .. command:_get_options() .. '"')
+        command:_bash_get_cmd(buf, indent + 12)
+        table.insert(buf, (" "):rep(indent + 12) .. "break")
+        table.insert(buf, (" "):rep(indent + 12) .. ";;")
+    end
+
+    table.insert(buf, (" "):rep(indent + 4) .. "esac")
+    table.insert(buf, (" "):rep(indent) .. "done")
+end
+
+function Parser:_bash_cmd_completions(buf)
+    local cmd_buf = {}
+    if self._parent then
+        self:_bash_option_args(cmd_buf, 12)
+    end
+    if #self._commands > 0 then
+        table.insert(cmd_buf, (" "):rep(12) .. 'COMPREPLY=($(compgen -W "' .. self:_get_commands() .. '" -- "$cur"))')
+    elseif self._is_help_command then
+        table.insert(cmd_buf, (" "):rep(12)
+            .. 'COMPREPLY=($(compgen -W "'
+            .. self._parent:_get_commands()
+            .. '" -- "$cur"))')
+    end
+    if #cmd_buf > 0 then
+        table.insert(buf, (" "):rep(8) .. "'" .. self:_get_fullname(true) .. "')")
+        table.insert(buf, table.concat(cmd_buf, "\n"))
+        table.insert(buf, (" "):rep(12) .. ";;")
+    end
+
+    for _, command in ipairs(self._commands) do
+        command:_bash_cmd_completions(buf)
+    end
+end
+
+function Parser:get_bash_complete()
+    self._basename = base_name(self._name)
+    assert(self:_is_shell_safe())
+    local buf = { ([[
+_%s() {
+    local IFS=$' \t\n'
+    local args cur prev cmd opts arg
+    args=("${COMP_WORDS[@]}")
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
+    opts="%s"
+]]):format(self._basename, self:_get_options()) }
+
+    self:_bash_option_args(buf, 4)
+    self:_bash_get_cmd(buf, 4)
+    if #self._commands > 0 then
+        table.insert(buf, "")
+        table.insert(buf, (" "):rep(4) .. 'case "$cmd" in')
+        self:_bash_cmd_completions(buf)
+        table.insert(buf, (" "):rep(4) .. "esac\n")
+    end
+
+    table.insert(buf, ([=[
+    if [[ "$cur" = -* ]]; then
+        COMPREPLY=($(compgen -W "$opts" -- "$cur"))
+    fi
+}
+
+complete -F _%s -o bashdefault -o default %s
+]=]):format(self._basename, self._basename))
+
+    return table.concat(buf, "\n")
+end
+
+function Parser:_zsh_arguments(buf, cmd_name, indent)
+    if self._parent then
+        table.insert(buf, (" "):rep(indent) .. "options=(")
+        table.insert(buf, (" "):rep(indent + 2) .. "$options")
+    else
+        table.insert(buf, (" "):rep(indent) .. "local -a options=(")
+    end
+
+    for _, option in ipairs(self._options) do
+        local line = {}
+        if #option._aliases > 1 then
+            if option._maxcount > 1 then
+                table.insert(line, '"*"')
+            end
+            table.insert(line, "{" .. table.concat(option._aliases, ",") .. '}"')
+        else
+            table.insert(line, '"')
+            if option._maxcount > 1 then
+                table.insert(line, "*")
+            end
+            table.insert(line, option._name)
+        end
+        if option._description then
+            local description = get_short_description(option):gsub('["%]:`$]', "\\%0")
+            table.insert(line, "[" .. description .. "]")
+        end
+        if option._maxargs == math.huge then
+            table.insert(line, ":*")
+        end
+        if option._choices then
+            table.insert(line, ": :(" .. table.concat(option._choices, " ") .. ")")
+        elseif option._maxargs > 0 then
+            table.insert(line, ": :_files")
+        end
+        table.insert(line, '"')
+        table.insert(buf, (" "):rep(indent + 2) .. table.concat(line))
+    end
+
+    table.insert(buf, (" "):rep(indent) .. ")")
+    table.insert(buf, (" "):rep(indent) .. "_arguments -s -S \\")
+    table.insert(buf, (" "):rep(indent + 2) .. "$options \\")
+
+    if self._is_help_command then
+        table.insert(buf, (" "):rep(indent + 2) .. '": :(' .. self._parent:_get_commands() .. ')" \\')
+    else
+        for _, argument in ipairs(self._arguments) do
+            local spec
+            if argument._choices then
+                spec = ": :(" .. table.concat(argument._choices, " ") .. ")"
+            else
+                spec = ": :_files"
+            end
+            if argument._maxargs == math.huge then
+                table.insert(buf, (" "):rep(indent + 2) .. '"*' .. spec .. '" \\')
+                break
+            end
+            for _ = 1, argument._maxargs do
+                table.insert(buf, (" "):rep(indent + 2) .. '"' .. spec .. '" \\')
+            end
+        end
+
+        if #self._commands > 0 then
+            table.insert(buf, (" "):rep(indent + 2) .. '": :_' .. cmd_name .. '_cmds" \\')
+            table.insert(buf, (" "):rep(indent + 2) .. '"*:: :->args" \\')
+        end
+    end
+
+    table.insert(buf, (" "):rep(indent + 2) .. "&& return 0")
+end
+
+function Parser:_zsh_cmds(buf, cmd_name)
+    table.insert(buf, "\n_" .. cmd_name .. "_cmds() {")
+    table.insert(buf, "  local -a commands=(")
+
+    for _, command in ipairs(self._commands) do
+        local line = {}
+        if #command._aliases > 1 then
+            table.insert(line, "{" .. table.concat(command._aliases, ",") .. '}"')
+        else
+            table.insert(line, '"' .. command._name)
+        end
+        if command._description then
+            table.insert(line, ":" .. get_short_description(command):gsub('["`$]', "\\%0"))
+        end
+        table.insert(buf, "    " .. table.concat(line) .. '"')
+    end
+
+    table.insert(buf, '  )\n  _describe "command" commands\n}')
+end
+
+function Parser:_zsh_complete_help(buf, cmds_buf, cmd_name, indent)
+    if #self._commands == 0 then
+        return
+    end
+
+    self:_zsh_cmds(cmds_buf, cmd_name)
+    table.insert(buf, "\n" .. (" "):rep(indent) .. "case $words[1] in")
+
+    for _, command in ipairs(self._commands) do
+        local name = cmd_name .. "_" .. command._name
+        table.insert(buf, (" "):rep(indent + 2) .. table.concat(command._aliases, "|") .. ")")
+        command:_zsh_arguments(buf, name, indent + 4)
+        command:_zsh_complete_help(buf, cmds_buf, name, indent + 4)
+        table.insert(buf, (" "):rep(indent + 4) .. ";;\n")
+    end
+
+    table.insert(buf, (" "):rep(indent) .. "esac")
+end
+
+function Parser:get_zsh_complete()
+    self._basename = base_name(self._name)
+    assert(self:_is_shell_safe())
+    local buf = { ("#compdef %s\n"):format(self._basename) }
+    local cmds_buf = {}
+    table.insert(buf, "_" .. self._basename .. "() {")
+    if #self._commands > 0 then
+        table.insert(buf, "  local context state state_descr line")
+        table.insert(buf, "  typeset -A opt_args\n")
+    end
+    self:_zsh_arguments(buf, self._basename, 2)
+    self:_zsh_complete_help(buf, cmds_buf, self._basename, 2)
+    table.insert(buf, "\n  return 1")
+    table.insert(buf, "}")
+
+    local result = table.concat(buf, "\n")
+    if #cmds_buf > 0 then
+        result = result .. "\n" .. table.concat(cmds_buf, "\n")
+    end
+    return result .. "\n\n_" .. self._basename .. "\n"
+end
+
+local function fish_escape(string)
+    return string:gsub("[\\']", "\\%0")
+end
+
+function Parser:_fish_get_cmd(buf, indent)
+    if #self._commands == 0 then
+        return
+    end
+
+    table.insert(buf, (" "):rep(indent) .. "set -e cmdline[1]")
+    table.insert(buf, (" "):rep(indent) .. "for arg in $cmdline")
+    table.insert(buf, (" "):rep(indent + 4) .. "switch $arg")
+
+    for _, command in ipairs(self._commands) do
+        table.insert(buf, (" "):rep(indent + 8) .. "case " .. table.concat(command._aliases, " "))
+        table.insert(buf, (" "):rep(indent + 12) .. "set cmd $cmd " .. command._name)
+        command:_fish_get_cmd(buf, indent + 12)
+        table.insert(buf, (" "):rep(indent + 12) .. "break")
+    end
+
+    table.insert(buf, (" "):rep(indent + 4) .. "end")
+    table.insert(buf, (" "):rep(indent) .. "end")
+end
+
+function Parser:_fish_complete_help(buf, basename)
+    local prefix = "complete -c " .. basename
+    table.insert(buf, "")
+
+    for _, command in ipairs(self._commands) do
+        local aliases = table.concat(command._aliases, " ")
+        local line
+        if self._parent then
+            line = ("%s -n '__fish_%s_using_command %s' -xa '%s'")
+                :format(prefix, basename, self:_get_fullname(true), aliases)
+        else
+            line = ("%s -n '__fish_%s_using_command' -xa '%s'"):format(prefix, basename, aliases)
+        end
+        if command._description then
+            line = ("%s -d '%s'"):format(line, fish_escape(get_short_description(command)))
+        end
+        table.insert(buf, line)
+    end
+
+    if self._is_help_command then
+        local line = ("%s -n '__fish_%s_using_command %s' -xa '%s'")
+            :format(prefix, basename, self:_get_fullname(true), self._parent:_get_commands())
+        table.insert(buf, line)
+    end
+
+    for _, option in ipairs(self._options) do
+        local parts = { prefix }
+
+        if self._parent then
+            table.insert(parts, "-n '__fish_" .. basename .. "_seen_command " .. self:_get_fullname(true) .. "'")
+        end
+
+        for _, alias in ipairs(option._aliases) do
+            if alias:match("^%-.$") then
+                table.insert(parts, "-s " .. alias:sub(2))
+            elseif alias:match("^%-%-.+") then
+                table.insert(parts, "-l " .. alias:sub(3))
+            end
+        end
+
+        if option._choices then
+            table.insert(parts, "-xa '" .. table.concat(option._choices, " ") .. "'")
+        elseif option._minargs > 0 then
+            table.insert(parts, "-r")
+        end
+
+        if option._description then
+            table.insert(parts, "-d '" .. fish_escape(get_short_description(option)) .. "'")
+        end
+
+        table.insert(buf, table.concat(parts, " "))
+    end
+
+    for _, command in ipairs(self._commands) do
+        command:_fish_complete_help(buf, basename)
+    end
+end
+
+function Parser:get_fish_complete()
+    self._basename = base_name(self._name)
+    assert(self:_is_shell_safe())
+    local buf = {}
+
+    if #self._commands > 0 then
+        table.insert(buf, ([[
+function __fish_%s_print_command
+    set -l cmdline (commandline -poc)
+    set -l cmd]]):format(self._basename))
+        self:_fish_get_cmd(buf, 4)
+        table.insert(buf, ([[
+    echo "$cmd"
+end
+
+function __fish_%s_using_command
+    test (__fish_%s_print_command) = "$argv"
+    and return 0
+    or return 1
+end
+
+function __fish_%s_seen_command
+    string match -q "$argv*" (__fish_%s_print_command)
+    and return 0
+    or return 1
+end]]):format(self._basename, self._basename, self._basename, self._basename))
+    end
+
+    self:_fish_complete_help(buf, self._basename)
+    return table.concat(buf, "\n") .. "\n"
+end
+
 local argparse = {}
 
-argparse.version = "0.7.1"
+argparse.version = "0.8.0"
 
 setmetatable(argparse, {
     __call = function(_, ...)
