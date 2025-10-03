@@ -628,7 +628,11 @@ end
 ---------------------------------
 
 function Argument:_get_choices_list()
-    return "{" .. table.concat(self._choices, ",") .. "}"
+    local string_choices = {}
+    for _, choice in ipairs(self._choices) do
+        table.insert(string_choices, tostring(choice))
+    end
+    return "{" .. table.concat(string_choices, ",") .. "}"
 end
 
 function Argument:_get_default_argname()
